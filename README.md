@@ -1,5 +1,5 @@
 # MINECRAFT COMMAND Programming Language
-### Authors: Hansen Maeve Quindao & EJ Tolentino Jr.
+### Authors: Hansen Maeve Quindao & EJ Tolentino.
 
 ## Rules of the Language:
  - Syntax is Python Style
