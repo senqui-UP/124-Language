@@ -1,3 +1,43 @@
+//class TOkenType
+enum class TokenType {
+    // Single character tokens
+    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
+    COMMA, DOT, MINUS, PLUS, STAR, PERCENT,
+    AMPERSAND, PIPE, CARET, TILDE,
+
+    // Multicharacter operators
+    DOLLAR, DOLLAR_DOLLAR, STAR_STAR,
+    EQUAL, EQUAL_EQUAL,
+    BANG, BANG_EQUAL,
+    GREATER, GREATER_EQUAL, RIGHT_SHIFT,
+    LESS, LESS_EQUAL, LEFT_SHIFT,
+    
+    // Compound assignments
+    PLUS_EQUAL, MINUS_EQUAL, STAR_EQUAL, 
+    DOLLAR_EQUAL, PERCENT_EQUAL, STAR_STAR_EQUAL,
+
+    // Literals
+    IDENTIFIER, STRING, NUMBER,
+
+    // Keywords
+    KEYWORD,
+
+    // Comments
+    COMMENT,
+
+    EOF
+}
+
+data class Token(
+    val type: TokenType,
+    val lexeme: String,
+    val literal: Any?,
+    val line: Int
+) {
+    override fun toString(): String =
+        "Token(type=$type, lexeme='$lexeme', literal=$literal, line=$line)"
+}
+
 // Class for the Scanner
 class Scanner(private val source: String) {
     private val tokens = mutableListOf<Token>()
@@ -131,27 +171,62 @@ class Scanner(private val source: String) {
         val value = source.substring(start + 1, current - 1)
         addToken(TokenType.STRING, value)
     }
+
+    // Handle keywords
+    private fun keyword() {
+        // Check for multi-word keywords first
+        for (kw in multiWordKeywords) {
+            if (peekAhead(kw.substring(1))) { // skip the leading '/'
+                repeat(kw.length - 1) { advance() }
+                addToken(TokenType.KEYWORD)
+                return
+            }
+        }
+        
+        // Single-word keyword
+        while (peek().isLetterOrDigit() || peek() == '_') advance()
+        val text = source.substring(start, current)
+        
+        if (keywords.contains(text)) {
+            addToken(TokenType.KEYWORD)
+        } else {
+            error("Unknown keyword or command: $text")
+        }
+    }
+
+     // Handle single and multi-word keywords, fallback to string literals
+    private fun keywordOrStringLiteral() {
+        val startPos = current - 1
     
-    // /whisper comments
-    private fun comment() {
-        while (peek() != '\n' && !isAtEnd()) {
-            advance()
+        // Check multi-word keywords first
+        for (kw in multiWordKeywords) {
+            if (startPos + kw.length <= source.length && 
+                source.substring(startPos, startPos + kw.length) == kw) {
+                current = startPos + kw.length
+                addToken(TokenType.KEYWORD, kw)
+                return
+            }
         }
     
+        // Single-word keywords
+        while (peek().isLetterOrDigit() || peek() == '_') advance()
         val text = source.substring(start, current)
-        addToken(TokenType.COMMENT, text)
-    }
     
-    private fun addToken(type: TokenType, literal: Any? = null) {
-        val text = source.substring(start, current)
-        tokens.add(Token(type, text, literal, line))
+        if (keywords.contains(text)) {
+            addToken(TokenType.KEYWORD, text)
+        } else {
+            addToken(TokenType.STRING, text) // fallback
+        }
     }
-    
-    private fun match(expected: Char): Boolean {
-        if (isAtEnd()) return false
-        if (source[current] != expected) return false
-        current++
-        return true
+   
+    private fun stringLiteral() {
+    // Continue from where we are, consuming until delimiter
+        while (!isAtEnd() && peek() != '\n' && peek() != ',' && 
+               peek() != ')' && peek() != '}' && peek() != ' ') {
+            advance()
+        }
+        val value = source.substring(start, current)
+        addToken(TokenType.STRING, value)
     }
 
     // Handle identifiers that start with '@'
@@ -177,87 +252,45 @@ class Scanner(private val source: String) {
         val text = source.substring(start, current)
         addToken(TokenType.IDENTIFIER, text)
     }
-    
-    // Handle single and multi-word keywords, fallback to string literals
-    private fun keywordOrStringLiteral() {
-        val startPos = current - 1
-    
-        // Check multi-word keywords first
-        for (kw in multiWordKeywords) {
-            if (startPos + kw.length <= source.length && 
-                source.substring(startPos, startPos + kw.length) == kw) {
-                current = startPos + kw.length
-                addToken(TokenType.KEYWORD, kw)
-                return
-            }
+
+    // /whisper comments
+    private fun comment() {
+        while (peek() != '\n' && !isAtEnd()) {
+            advance()
         }
     
-        // Single-word keywords
-        while (peek().isLetterOrDigit() || peek() == '_') advance()
         val text = source.substring(start, current)
+        addToken(TokenType.COMMENT, text)
+    }
     
-        if (keywords.contains(text)) {
-            addToken(TokenType.KEYWORD, text)
-        } else {
-            addToken(TokenType.STRING, text) // fallback
-        }
+    private fun addToken(type: TokenType, literal: Any? = null) {
+        val text = source.substring(start, current)
+        tokens.add(Token(type, text, literal, line))
+    }
+    
+    private fun match(expected: Char): Boolean {
+        if (isAtEnd()) return false
+        if (source[current] != expected) return false
+        current++
+        return true
     }
 
+    // Peek Functions
     private fun peek(): Char = if (isAtEnd()) '\u0000' else source[current]
     
+    private fun peekNext(): Char = if (current + 1 >= source.length) '\u0000' else source[current + 1]
+
     private fun peekAhead(word: String): Boolean {
         if (current + word.length > source.length) return false
         return source.substring(current, current + word.length) == word
     }
     
-    private fun error(message: String) {
-        println("Error at line $line: $message")
-    }
+    // Handles Errors
+    private fun error(message: String) { println("Error at line $line: $message") }
     
     private fun isAtEnd(): Boolean = current >= source.length
     private fun advance(): Char = source[current++]
 }
-
-
-enum class TokenType {
-    // Single-character tokens
-    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
-    COMMA, DOT, MINUS, PLUS, STAR, PERCENT,
-    AMPERSAND, PIPE, CARET, TILDE,
-
-    // Multi-character operators
-    DOLLAR, DOLLAR_DOLLAR, STAR_STAR,
-    EQUAL, EQUAL_EQUAL,
-    BANG, BANG_EQUAL,
-    GREATER, GREATER_EQUAL, RIGHT_SHIFT,
-    LESS, LESS_EQUAL, LEFT_SHIFT,
-    
-    // Compound assignments
-    PLUS_EQUAL, MINUS_EQUAL, STAR_EQUAL, 
-    DOLLAR_EQUAL, PERCENT_EQUAL, STAR_STAR_EQUAL,
-
-    // Literals
-    IDENTIFIER, STRING, NUMBER,
-
-    // Keywords
-    KEYWORD,
-
-    // Comments
-    COMMENT,
-
-    EOF
-}
-
-data class Token(
-    val type: TokenType,
-    val lexeme: String,
-    val literal: Any?,
-    val line: Int
-) {
-    override fun toString(): String =
-        "Token(type=$type, lexeme='$lexeme', literal=$literal, line=$line)"
-}
-
 
 // Main function
 fun main() {
