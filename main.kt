@@ -19,17 +19,30 @@ fun main() {
 
 
 enum class TokenType {
-    // Arithmetic
-    PLUS, MINUS, STAR, DIV, FLOOR_DIV, MOD, POWER,
+    // Single-character tokens
+    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
+    COMMA, DOT, MINUS, PLUS, STAR, PERCENT,
+    AMPERSAND, PIPE, CARET, TILDE,
+
+    // Multi-character operators
+    DOLLAR, DOLLAR_DOLLAR, STAR_STAR,
+    EQUAL, EQUAL_EQUAL,
+    BANG, BANG_EQUAL,
+    GREATER, GREATER_EQUAL, RIGHT_SHIFT,
+    LESS, LESS_EQUAL, LEFT_SHIFT,
+    
+    // Compound assignments
+    PLUS_EQUAL, MINUS_EQUAL, STAR_EQUAL, 
+    DOLLAR_EQUAL, PERCENT_EQUAL, STAR_STAR_EQUAL,
 
     // Literals
     IDENTIFIER, STRING, NUMBER,
 
     // Keywords
-    FUNCTION, KILL, SAY, INPUT, SUMMON, EXPR,
-    EXECUTE_IF, EXECUTE_FOR, EXECUTE_WHILE,
-    RUN, GAMERULE, EFFECT, TEAM,
-    AND, AS, BREAK, PASS,
+    KEYWORD,
+
+    // Comments
+    COMMENT,
 
     EOF
 }
