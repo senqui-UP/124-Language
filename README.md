@@ -1,5 +1,17 @@
-# 124-Language
->>> Authors: Hansen Maeve Quindao & EJ Tolentino Jr.
+# MINECRAFT COMMAND Programming Language
+### Authors: Hansen Maeve Quindao & EJ Tolentino Jr.
+
+## Rules of the Language:
+ - Syntax is Python Style
+ - All commands start with / (/say, /function /for, /if)
+ - Like Minecraft commands, strings do not need quotations
+ - However, numbers and variables need ()
+ - /kill ends the program
+ - /function defines a function
+ - /say is print
+ - /exp is for expressions
+
+
 
 > This is the [MINECRAFT COMMAND] programming language
 Token ( type = IDENTIFIER , lexeme = This , literal = null , line =1)
