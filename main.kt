@@ -47,27 +47,6 @@ class Scanner(private val source: String) {
 }
 
 
-// Main function
-fun main() {
-    println("Loading...")
-    println("Welcome to PyCraft (type '/kill' to exit)")
-
-    while (true) {
-        print("> ")
-        val input = readln()
-
-        if (input.trim() == "/kill") break
-
-        val scanner = Scanner(input)
-        val tokens = scanner.scanTokens()
-
-        for (token in tokens) {
-            println(token)
-        }
-    }
-}
-
-
 enum class TokenType {
     // Single-character tokens
     LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
@@ -106,3 +85,25 @@ data class Token(
     override fun toString(): String =
         "Token(type=$type, lexeme='$lexeme', literal=$literal, line=$line)"
 }
+
+
+// Main function
+fun main() {
+    println("Loading...")
+    println("Welcome to PyCraft (type '/kill' to exit)")
+
+    while (true) {
+        print("> ")
+        val input = readln()
+
+        if (input.trim() == "/kill") break
+
+        val scanner = Scanner(input)
+        val tokens = scanner.scanTokens()
+
+        for (token in tokens) {
+            println(token)
+        }
+    }
+}
+
