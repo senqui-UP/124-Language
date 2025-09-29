@@ -27,10 +27,10 @@ The PyCraft Programming language is a Python-based language designed to mimic ho
 
 ## Operators
 _same as Python, but divide is $_  
-**Arithmetic:** +, -, &ast;, $, $$, &percent;, &ast;&ast;
+**Arithmetic:** +, -, &ast;, $, $$, %, &ast;&ast;
 **Comparison:** ==, !=, <, <=, >, >=  
 **Logical:** and, or, not  
-**Assignment:** =, +=, -=, &ast;=, $=, $$=, &percent;=, &ast;&ast;=  
+**Assignment:** =, +=, -=, &ast;=, $=, $$=, %=, &ast;&ast;=  
 **Membership:** in, not in  
 **Identity:** is, is not  
 **Bitwise:** &, |, ^, ~, <<, >>  
