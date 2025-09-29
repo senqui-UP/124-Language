@@ -1,7 +1,7 @@
 # 124-Language
 >>> Authors: Hansen Maeve Quindao & EJ Tolentino Jr.
 
-This is the [MINECRAFT COMMAND] programming language
+> This is the [MINECRAFT COMMAND] programming language
 Token ( type = IDENTIFIER , lexeme = This , literal = null , line =1)
 Token ( type = IDENTIFIER , lexeme = is , literal = null , line =1)
 Token ( type = IDENTIFIER , lexeme = the , literal = null , line =1)
