@@ -27,14 +27,14 @@ The PyCraft Programming language is a Python-based language designed to mimic ho
 
 ## Operators
 
-_same as Python_
-**Arithmetic:** +, -, *, $, $$, %, *
-**Comparison:** ==, !=, <, <=, >, >=
-**Logical:**    and, or, not
-**Assignment:** =, +=, -=, *=, $=, $$=, %=, **=
-**Membership:** in, not in
-**Identity:**   is, is not
-**Bitwise:**    &, |, ^, ~, <<, >>
+_same as Python_  
+**Arithmetic:** +, -, *, $, $$, %, *  
+**Comparison:** ==, !=, <, <=, >, >=  
+**Logical:**    and, or, not  
+**Assignment:** =, +=, -=, *=, $=, $$=, %=, **=  
+**Membership:** in, not in  
+**Identity:**   is, is not  
+**Bitwise:**    &, |, ^, ~, <<, >>  
 
 ## Literals
 
@@ -53,9 +53,35 @@ _same as Python_
 [Describe whether whitespace is significant, how statements are terminated, and what delimiters are used for blocks and grouping]
 
 ## Sample Code
+```/say hello world```     
+*print(“hello world”)*  
 
-[Provide a few examples of valid code in your language to demonstrate the syntax and features]
+```
+/summon int @varname (10)  
+/expr @varname {@varname*(2)}  
+/say @varname  
+```   
+_int varname = 10  
+varname *= 2  
+print(varname) = 20_  
+
+```
+/execute if @varname==(10) run
+	/summon int @var2 (20)
+	/expr @varname {@var2}
+/say varname is now @varname
+else
+	/expr @varname {0}		
+	/say varname is now @varname
+```
+*if (varname==10)  
+  int var2 = 20  
+  varname = var2  
+  print(“varname is now ”, varname)  
+else  
+  varname = 0  
+  print(“varname is now “, varname)*  
+
 
 ## Design Rationale
-
-[Explain the reasoning behind your design choices]
+The rationale for our design choices was to make it similar to how Minecraft commands work. They already have their own syntaxes, but we expanded it to be more for coding and programming instead of just their functions in Minecraft. New commands/keywords are created so that it’s still easy to understand and not just simply obfuscating and changing keywords for the sake of changing them.
