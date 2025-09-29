@@ -16,3 +16,27 @@ fun main() {
         }
     }
 }
+
+
+enum class TokenType {
+    // Arithmetic
+    PLUS, MINUS, STAR, DIV, FLOOR_DIV, MOD, POWER,
+
+    // Literals
+    IDENTIFIER, STRING, NUMBER,
+
+    // Keywords
+    FUNCTION, KILL, SAY, INPUT, SUMMON, EXPR,
+    EXECUTE_IF, EXECUTE_FOR, EXECUTE_WHILE,
+    RUN, GAMERULE, EFFECT, TEAM,
+    AND, AS, BREAK, PASS,
+
+    EOF
+}
+
+data class Token(
+    val type: TokenType,
+    val lexeme: String,
+    val literal: Any?,
+    val line: Int
+)
