@@ -52,4 +52,7 @@ data class Token(
     val lexeme: String,
     val literal: Any?,
     val line: Int
-)
+) {
+    override fun toString(): String =
+        "Token(type=$type, lexeme='$lexeme', literal=$literal, line=$line)"
+}
