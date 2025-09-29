@@ -1,13 +1,13 @@
-# [Your Programming Language Name]
+# [PyCraft]
 
 ## Creator
-
 Authors: Hansen Maeve Quindao & EJ Tolentino
 
 
 ## Language Overview
 
 The PyCraft Programming language is a Python-based language designed to mimic how command lines work in the game Minecraft. Its purpose is to serve as an experimental language and expand on how Minecraft commands already function. It serves as a gamified version of the Python language, encouraging those familiar with Minecraft to engage in programming and explore coding.
+
 
 ## Keywords
 
@@ -25,34 +25,47 @@ The PyCraft Programming language is a Python-based language designed to mimic ho
 - /effect        _(return)_
 - /team          _(class)_
 
+
 ## Operators
 
-_same as Python_  
+_same as Python, but divide is $_  
 **Arithmetic:** +, -, *, $, $$, %, *  
 **Comparison:** ==, !=, <, <=, >, >=  
-**Logical:**    and, or, not  
+**Logical:**&emsp;and, or, not  
 **Assignment:** =, +=, -=, *=, $=, $$=, %=, **=  
 **Membership:** in, not in  
-**Identity:**   is, is not  
-**Bitwise:**    &, |, ^, ~, <<, >>  
+**Identity:** &ensp;is, is not  
+**Bitwise:**&emsp;&, |, ^, ~, <<, >>  
+
 
 ## Literals
 
-[Describe the format and syntax for each type of literal value (e.g., numbers, strings, characters, etc.) your language supports]
+Strings - all literals are automatically assumed to be strings  
+Numbers - requires () to be recognized as a numeric value  
+
 
 ## Identifiers
 
-[Define the rules for valid identifiers (variable names, function names, etc.) and whether they are case-sensitive]
+- All identifiers will start with an @
+- Case Sensitive
+- Must start with a letter and is at most 50 characters
+
 
 ## Comments
 
-[Describe the syntax for comments and whether nested comments are supported]
+```/whisper “the comment here”```  
+This would be able to support single line and multiline comments
+
 
 ## Syntax Style
 
-[Describe whether whitespace is significant, how statements are terminated, and what delimiters are used for blocks and grouping]
+- Similar to Python: Indentation based, no semicolons
+- Keywords will always start with /
+- Curly brackets are used for grouping expressions and function calls
+
 
 ## Sample Code
+
 ```/say hello world```     
 *print(“hello world”)*  
 
@@ -69,7 +82,7 @@ print(varname) = 20_
 /execute if @varname==(10) run
 	/summon int @var2 (20)
 	/expr @varname {@var2}
-/say varname is now @varname
+    /say varname is now @varname
 else
 	/expr @varname {0}		
 	/say varname is now @varname
@@ -84,4 +97,5 @@ else
 
 
 ## Design Rationale
+
 The rationale for our design choices was to make it similar to how Minecraft commands work. They already have their own syntaxes, but we expanded it to be more for coding and programming instead of just their functions in Minecraft. New commands/keywords are created so that it’s still easy to understand and not just simply obfuscating and changing keywords for the sake of changing them.
