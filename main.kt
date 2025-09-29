@@ -33,12 +33,107 @@ class Scanner(private val source: String) {
         tokens.add(Token(TokenType.EOF, "", null, line))
         return tokens
     }
+private fun scanToken() {
+    val c = advance()
+    when (c) {
+        '(' -> addToken(TokenType.LEFT_PAREN)
+        ')' -> addToken(TokenType.RIGHT_PAREN)
+        '{' -> addToken(TokenType.LEFT_BRACE)
+        '}' -> addToken(TokenType.RIGHT_BRACE)
+        ',' -> addToken(TokenType.COMMA)
+        '.' -> addToken(TokenType.DOT)
+        '~' -> addToken(TokenType.TILDE)
+        '^' -> addToken(TokenType.CARET)
 
-    private fun scanToken() {
-        val c = advance()
-        // placeholder: real scanning to come
-        println("Scanned char: $c")
+        '&' -> addToken(TokenType.AMPERSAND)
+        '|' -> addToken(TokenType.PIPE)
+
+        '-' -> addToken(if (match('=')) TokenType.MINUS_EQUAL else TokenType.MINUS)
+        '+' -> addToken(if (match('=')) TokenType.PLUS_EQUAL else TokenType.PLUS)
+        '%' -> addToken(if (match('=')) TokenType.PERCENT_EQUAL else TokenType.PERCENT)
+
+        '*' -> {
+            when {
+                match('*') -> addToken(if (match('=')) TokenType.STAR_STAR_EQUAL else TokenType.STAR_STAR)
+                match('=') -> addToken(TokenType.STAR_EQUAL)
+                else -> addToken(TokenType.STAR)
+            }
+        }
+
+        '$' -> {
+            when {
+                match('$') -> addToken(TokenType.DOLLAR_DOLLAR)
+                match('=') -> addToken(TokenType.DOLLAR_EQUAL)
+                else -> addToken(TokenType.DOLLAR)
+            }
+        }
+
+        '!' -> addToken(if (match('=')) TokenType.BANG_EQUAL else TokenType.BANG)
+        '=' -> addToken(if (match('=')) TokenType.EQUAL_EQUAL else TokenType.EQUAL)
+        
+        '<' -> {
+            when {
+                match('<') -> addToken(TokenType.LEFT_SHIFT)
+                match('=') -> addToken(TokenType.LESS_EQUAL)
+                else -> addToken(TokenType.LESS)
+            }
+        }
+        
+        '>' -> {
+            when {
+                match('>') -> addToken(TokenType.RIGHT_SHIFT)
+                match('=') -> addToken(TokenType.GREATER_EQUAL)
+                else -> addToken(TokenType.GREATER)
+            }
+        }
+
+        ' ', '\r', '\t' -> {} 
+        '\n' -> line++
+
+        '"' -> quotedString() 
+
+        '/' -> {
+            if (peekAhead("whisper")) {
+                comment()
+            } else {
+                keyword()
+            }
+        }
+
+        '@' -> identifier()
+
+        else -> {
+            when {
+                c.isDigit() -> error("Numbers must be wrapped in parentheses: ($c...)")
+                c.isLetter() -> keywordOrStringLiteral() // commit 8
+                else -> error("Unexpected character '$c'")
+            }
+        }
     }
+}
+
+private fun addToken(type: TokenType, literal: Any? = null) {
+    val text = source.substring(start, current)
+    tokens.add(Token(type, text, literal, line))
+}
+
+private fun match(expected: Char): Boolean {
+    if (isAtEnd()) return false
+    if (source[current] != expected) return false
+    current++
+    return true
+}
+
+private fun peek(): Char = if (isAtEnd()) '\u0000' else source[current]
+
+private fun peekAhead(word: String): Boolean {
+    if (current + word.length > source.length) return false
+    return source.substring(current, current + word.length) == word
+}
+
+private fun error(message: String) {
+    println("Error at line $line: $message")
+}
 
     private fun isAtEnd(): Boolean = current >= source.length
     private fun advance(): Char = source[current++]
