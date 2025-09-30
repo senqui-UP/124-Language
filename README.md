@@ -1,39 +1,12 @@
-<<<<<<< HEAD
 # PyCraft
-=======
-# [PyCraft]
->>>>>>> 80393cabe322b899e0e3064525fdc62e1cab6ebe
+## Creators
+Hansen Maeve Quindao & Edmundo Tolentino Jr
 
-## Creator
-Authors: Hansen Maeve Quindao & EJ Tolentino
+
 ## Language Overview
 The PyCraft Programming language is a Python-based language designed to mimic how command lines work in the game Minecraft. Its purpose is to serve as an experimental language and expand on how Minecraft commands already function. It serves as a gamified version of the Python language, encouraging those familiar with Minecraft to engage in programming and explore coding.
 
 
-<<<<<<< HEAD
-[List all reserved words that cannot be used as identifiers - include the keyword and a brief description of its purpose]
-=======
-## Keywords
-- /function	     _(for declaring functions)_
-- /kill		     _(declaring the closure of a program)_
-- /say		     _(print/output)_
-- /input	     _(input)_
-- /summon	     _(declaring a variable)_
-- /expr		     _(declaring expressions)_
-- /execute if    _(if)_
-- else			 _(else)_
-- /execute for   _(for)_
-- /execute while _(while)_
-- run		     _(then statements)_
-- /gamerule	     _(import)_
-- /effect        _(return)_
-- /team          _(class)_
->>>>>>> 80393cabe322b899e0e3064525fdc62e1cab6ebe
-
-
-<<<<<<< HEAD
-[List all operators organized by category (arithmetic, comparison, logical, assignment, etc.)]
-=======
 ## Operators
 _same as Python, but divide is $_  
 **Arithmetic:** +, -, &ast;, $, $$, %, &ast;&ast;
@@ -44,7 +17,6 @@ _same as Python, but divide is $_
 **Identity:** is, is not  
 **Bitwise:** &, |, ^, ~, <<, >>  
 
->>>>>>> 80393cabe322b899e0e3064525fdc62e1cab6ebe
 
 ## Literals
 Strings - all literals are automatically assumed to be strings  
@@ -56,23 +28,12 @@ Numbers - requires () to be recognized as a numeric value
 - Case Sensitive
 - Must start with a letter and is at most 50 characters
 
-<<<<<<< HEAD
--Variable names start with @
--Variables names are case-sensitive
--Keywords can't be vaariables
-=======
->>>>>>> 80393cabe322b899e0e3064525fdc62e1cab6ebe
 
 ## Comments
 ```
 /whisper “the comment here
 this way this kind of comment supports multiline”
 ```  
-
-<<<<<<< HEAD
-Comments follow the formatting /whisper “insert comment”
-=======
->>>>>>> 80393cabe322b899e0e3064525fdc62e1cab6ebe
 
 ## Syntax Style
 - Similar to Python: Indentation based, no semicolons
@@ -81,8 +42,6 @@ Comments follow the formatting /whisper “insert comment”
 
 
 ## Sample Code
-<<<<<<< HEAD
-=======
 ```/say hello world```     
 *print(“hello world”)*  
 
@@ -111,10 +70,7 @@ else
 else  
 &emsp;varname = 0  
 &emsp;print(“varname is now “, varname)*  
->>>>>>> 80393cabe322b899e0e3064525fdc62e1cab6ebe
 
-[Provide a few examples of valid code in your language to demonstrate the syntax and features]
 
 ## Design Rationale
-
-[Explain the reasoning behind your design choices]
+The rationale for our design choices was to make it similar to how Minecraft commands work. They already have their own syntaxes, but we expanded it to be more for coding and programming instead of just their functions in Minecraft. New commands/keywords are created so that it’s still easy to understand and not just simply obfuscating and changing keywords for the sake of changing them.
