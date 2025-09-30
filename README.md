@@ -1,6 +1,6 @@
 # PyCraft
 ## Creators
-Hansen Maeve Quindao & EJ Tolentino
+Hansen Maeve Quindao & Edmundo Tolentino Jr
 
 
 ## Language Overview
