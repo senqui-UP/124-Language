@@ -1,6 +1,4 @@
-// ------------------------------
-// Token Types
-// ------------------------------
+
 enum class TokenType {
     // Single-character tokens
     LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
@@ -10,10 +8,14 @@ enum class TokenType {
     // Multi-character operators
     DOLLAR, DOLLAR_DOLLAR, STAR_STAR,
     EQUAL, EQUAL_EQUAL,
-    BANG, BANG_EQUAL,
+    EXCL, EXCL_EQUAL,
     GREATER, GREATER_EQUAL, RIGHT_SHIFT,
     LESS, LESS_EQUAL, LEFT_SHIFT,
-    
+
+    //logical operators
+    IN,IS,AND,OR,NOT,NOT_IN,IS_NOT,
+
+
     // Compound assignments
     PLUS_EQUAL, MINUS_EQUAL, STAR_EQUAL, 
     DOLLAR_EQUAL, PERCENT_EQUAL, STAR_STAR_EQUAL,
@@ -24,8 +26,7 @@ enum class TokenType {
     // Keywords
     KEYWORD,
 
-    // Comments
-    COMMENT,
+    // No COMMENT TokenType since we ignore it
 
     EOF
 }
@@ -36,7 +37,7 @@ enum class TokenType {
 data class Token(
     val type: TokenType,
     val lexeme: String,
-    val literal: Any?,
+    val literal: Any? = null,
     val line: Int
 ) {
     override fun toString(): String =
@@ -57,8 +58,6 @@ class Scanner(private val source: String) {
         "/function", "/kill", "/say", "/input", "/summon", "/expr",
         "/execute", "/gamerule", "/effect", "/team",
         "run", "else",
-        "and", "or", "not", 
-        "in", "is",
         "as", "break", "pass"
     )
 
@@ -67,11 +66,12 @@ class Scanner(private val source: String) {
         "/execute if",
         "/execute for", 
         "/execute while",
-        "not in",
-        "is not"
+
     )
 
-    // Scan all tokens
+    // ------------------------------
+    // Main Scanning
+    // ------------------------------
     fun scanTokens(): List<Token> {
         while (!isAtEnd()) {
             start = current
@@ -81,11 +81,10 @@ class Scanner(private val source: String) {
         return tokens
     }
 
-    // Main scanning logic
     private fun scanToken() {
         val c = advance()
         when (c) {
-            '(' -> addToken(TokenType.LEFT_PAREN)
+            '(' -> numberLiteral()
             ')' -> addToken(TokenType.RIGHT_PAREN)
             '{' -> addToken(TokenType.LEFT_BRACE)
             '}' -> addToken(TokenType.RIGHT_BRACE)
@@ -93,7 +92,13 @@ class Scanner(private val source: String) {
             '.' -> addToken(TokenType.DOT)
             '~' -> addToken(TokenType.TILDE)
             '^' -> addToken(TokenType.CARET)
-
+            "in"-> addToken(TokenType.IN)
+            "is"-> addToken(TokenType.IS)  
+            "and"-> addToken(TokenType.AND)
+            "or"-> addToken(TokenType.OR)
+            "not"-> addToken(TokenType.NOT)
+            "not in"-> addToken(TokenType.NOT_IN)
+            "is not"-> addToken(TokenType.IS_NOT)
             '&' -> addToken(TokenType.AMPERSAND)
             '|' -> addToken(TokenType.PIPE)
 
@@ -117,9 +122,9 @@ class Scanner(private val source: String) {
                 }
             }
 
-            '!' -> addToken(if (match('=')) TokenType.BANG_EQUAL else TokenType.BANG)
+            '!' -> addToken(if (match('=')) TokenType.EXCL_EQUAL else TokenType.EXCL)
             '=' -> addToken(if (match('=')) TokenType.EQUAL_EQUAL else TokenType.EQUAL)
-            
+
             '<' -> {
                 when {
                     match('<') -> addToken(TokenType.LEFT_SHIFT)
@@ -127,7 +132,7 @@ class Scanner(private val source: String) {
                     else -> addToken(TokenType.LESS)
                 }
             }
-            
+
             '>' -> {
                 when {
                     match('>') -> addToken(TokenType.RIGHT_SHIFT)
@@ -139,13 +144,13 @@ class Scanner(private val source: String) {
             ' ', '\r', '\t' -> {} // ignore whitespace
             '\n' -> line++
 
-            '"' -> quotedString() 
+            '"' -> quotedString() // optional: keep supporting quoted string
 
             '/' -> {
                 if (peekAhead("whisper")) {
                     comment()
                 } else {
-                    keyword()
+                    stringOrKeyword()
                 }
             }
 
@@ -153,8 +158,7 @@ class Scanner(private val source: String) {
 
             else -> {
                 when {
-                    c.isDigit() -> error("Numbers must be wrapped in parentheses: ($c...)")
-                    c.isLetter() -> keywordOrStringLiteral()
+                    c.isLetter() -> stringOrKeyword()
                     else -> error("Unexpected character '$c'")
                 }
             }
@@ -164,7 +168,6 @@ class Scanner(private val source: String) {
     // ------------------------------
     // Token Helpers
     // ------------------------------
-
     private fun addToken(type: TokenType, literal: Any? = null) {
         val text = source.substring(start, current)
         tokens.add(Token(type, text, literal, line))
@@ -178,92 +181,51 @@ class Scanner(private val source: String) {
     }
 
     private fun peek(): Char = if (isAtEnd()) '\u0000' else source[current]
-
-    private fun peekNext(): Char =
-        if (current + 1 >= source.length) '\u0000' else source[current + 1]
-
+    private fun peekNext(): Char = if (current + 1 >= source.length) '\u0000' else source[current + 1]
     private fun peekAhead(word: String): Boolean {
         if (current + word.length > source.length) return false
         return source.substring(current, current + word.length) == word
     }
 
-    private fun error(message: String) {
-        println("Error at line $line: $message")
-    }
-
     private fun isAtEnd(): Boolean = current >= source.length
     private fun advance(): Char = source[current++]
+    private fun error(message: String) = println("Error at line $line: $message")
 
     // ------------------------------
     // Extra Handlers
     // ------------------------------
-
     private fun comment() {
-        // Consume "whisper"
         repeat("whisper".length) { advance() }
-
-        // Skip whitespace after /whisper
         while (peek() == ' ' || peek() == '\t') advance()
-
-        // Check if comment is quoted
         if (peek() == '"') {
-            advance() // opening quote
+            advance()
             while (!isAtEnd() && peek() != '"') {
                 if (peek() == '\n') line++
                 advance()
             }
-            if (!isAtEnd()) advance() // closing quote
+            if (!isAtEnd()) advance()
         } else {
-            // Unquoted comment → consume until end of line
             while (!isAtEnd() && peek() != '\n') advance()
         }
-
-        val text = source.substring(start, current)
-        addToken(TokenType.COMMENT, text)
     }
 
-    private fun keyword() {
+    private fun stringOrKeyword() {
         // Check multi-word keywords first
         for (kw in multiWordKeywords) {
-            if (peekAhead(kw.substring(1))) { // skip the leading '/'
+            if (source.substring(current - 1).startsWith(kw)) {
                 repeat(kw.length - 1) { advance() }
                 addToken(TokenType.KEYWORD)
                 return
             }
         }
 
-        // Single-word keyword
-        while (peek().isLetterOrDigit() || peek() == '_') advance()
+        // Check single-word keyword
+        while (!isAtEnd() && (peek().isLetterOrDigit() || peek() == '_')) advance()
         val text = source.substring(start, current)
 
         if (keywords.contains(text)) {
             addToken(TokenType.KEYWORD)
         } else {
-            error("Unknown keyword or command: $text")
-        }
-    }
-
-    private fun keywordOrStringLiteral() {
-        val startPos = current - 1
-
-        // Try to match multi-word keywords
-        for (kw in multiWordKeywords) {
-            if (startPos + kw.length <= source.length &&
-                source.substring(startPos, startPos + kw.length) == kw) {
-                current = startPos + kw.length
-                addToken(TokenType.KEYWORD)
-                return
-            }
-        }
-
-        // Check for single-word keywords
-        while (peek().isLetterOrDigit() || peek() == '_') advance()
-        val text = source.substring(start, current)
-
-        if (keywords.contains(text)) {
-            addToken(TokenType.KEYWORD)
-        } else {
-            // Treat as string literal
             stringLiteral()
         }
     }
@@ -271,32 +233,43 @@ class Scanner(private val source: String) {
     private fun stringLiteral() {
         while (!isAtEnd() && peek() != '\n' &&
                peek() != ',' && peek() != ')' &&
-               peek() != '}' && peek() != ' ') {
+               peek() != '}' && !peek().isWhitespace() &&
+               !keywords.any { source.startsWith(it, current) }) {
             advance()
         }
         val value = source.substring(start, current)
         addToken(TokenType.STRING, value)
     }
 
+    private fun numberLiteral() {
+        if (source[start] != '(') return
+
+        val numberStart = current
+        while (!isAtEnd() && (peek().isDigit() || peek() == '.')) advance()
+
+        if (peek() != ')') {
+            error("Number must end with ')'")
+            return
+        }
+
+        val numberText = source.substring(numberStart, current)
+        val numberValue = parseNumber(numberText)
+        advance() // consume ')'
+        addToken(TokenType.NUMBER, numberValue)
+    }
+
     private fun identifier() {
-        // Must start with @ (already consumed)
         if (!peek().isLetter()) {
             error("Identifier must start with @ followed by a letter")
             return
         }
-
         advance() // first letter
-        var length = 2 // @ + first letter
-
+        var length = 2
         while ((peek().isLetterOrDigit() || peek() == '_') && length < 51) {
             advance()
             length++
         }
-
-        if (length > 50) {
-            error("Identifier exceeds 50 characters")
-        }
-
+        if (length > 50) error("Identifier exceeds 50 characters")
         val text = source.substring(start, current)
         addToken(TokenType.IDENTIFIER, text)
     }
@@ -306,24 +279,17 @@ class Scanner(private val source: String) {
             if (peek() == '\n') line++
             advance()
         }
-
         if (isAtEnd()) {
             error("Unterminated string")
             return
         }
-
         advance() // closing quote
         val value = source.substring(start + 1, current - 1)
         addToken(TokenType.STRING, value)
     }
 
-    // Optional: number parser
     fun parseNumber(text: String): Double? {
-        return try {
-            text.toDouble()
-        } catch (e: NumberFormatException) {
-            null
-        }
+        return try { text.toDouble() } catch (e: NumberFormatException) { null }
     }
 }
 
