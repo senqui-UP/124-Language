@@ -4,24 +4,24 @@ Hansen Maeve Quindao & Edmundo Tolentino Jr
 
 
 ## Language Overview
-The PyCraft Programming language is a Python-based language designed to mimic how command lines work in the game Minecraft. Its purpose is to serve as an experimental language and expand on how Minecraft commands already function. It serves as a gamified version of the Python language, encouraging those familiar with Minecraft to engage in programming and explore coding.
+The PyCraft Programming language is a Python-inspired language designed to mimic how command lines work in Minecraft. Its purpose is to serve as an experimental language and expand on how Minecraft commands already function. It serves as a gamified version of the Python language, encouraging those familiar with Minecraft to engage in programming and explore coding.
 
 
 ## Keywords
-/function	- for declaring functions
-/kill		- declaring the closure of a program
-/say		- print/output
-/input		- input
-/summon	- declaring a variable
-/expr		- declaring expressions
-/execute if	- if
-/execute for	- for
-/execute while	- while
-run		- then statements 
-/gamerule	- import?
-/effect  		- return
-/team 		- class
-
+- /function	    _(for declaring functions)_
+- /kill		    _(declaring the closure of a program)_
+- /say		    _(print/output)_
+- /input	    _(input)_
+- /summon	    _(declaring a variable)_
+- /expr	        _(declaring expressions)_
+- /execute if   _(if)_
+- /execute for  _(for)_
+- /execute while_(while)_
+- run		    _(then statements)_
+- else          _(else)_
+- /gamerule	    _(import)_
+- /effect  		_(return)_
+- /team 		_(class)_
 
 ## Operators
 _same as Python, but divide is \$_   
