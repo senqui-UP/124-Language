@@ -30,7 +30,7 @@ class Scanner(private val source: String) {
     // Multiword Keywords List
     private val multiWordKeywords = listOf(
         "/execute if",
-        "/execute for", 
+        "/execute for",
         "/execute while"
     )
 
@@ -49,7 +49,8 @@ class Scanner(private val source: String) {
     private fun scanToken() {
         val c = advance()
         when (c) {
-            '(' -> numberLiteral()
+            // FIX: add LEFT_PAREN handling via smart lookahead (see case below)
+
             ')' -> addToken(TokenType.RIGHT_PAREN)
             '{' -> addToken(TokenType.LEFT_BRACE)
             '}' -> addToken(TokenType.RIGHT_BRACE)
@@ -114,6 +115,20 @@ class Scanner(private val source: String) {
 
             '@' -> identifier()
 
+            // FIX: bare numbers like 42, 3.14
+            in '0'..'9' -> {
+                number() // <— new helper below (non-destructive to your (num) style)
+            }
+
+            // FIX: smart '(' handling — either a plain LEFT_PAREN or a (number) literal
+            '(' -> {
+                if (looksLikeParenNumber()) {
+                    numberLiteralFromParens() // consumes the digits and the ')', emits NUMBER
+                } else {
+                    addToken(TokenType.LEFT_PAREN) // regular grouping paren
+                }
+            }
+
             else -> {
                 when {
                     c.isLetter() -> wordOrOperator()
@@ -172,8 +187,9 @@ class Scanner(private val source: String) {
         for ((op, type) in multiWordLogicalOps) {
             if (source.substring(current - 1).startsWith(op)) {
                 val nextCharIdx = current - 1 + op.length
-                if (nextCharIdx >= source.length || 
-                    !source[nextCharIdx].isLetterOrDigit()) {
+                if (nextCharIdx >= source.length ||
+                    !source[nextCharIdx].isLetterOrDigit()
+                ) {
                     repeat(op.length - 1) { advance() }
                     addToken(type)
                     return
@@ -230,7 +246,65 @@ class Scanner(private val source: String) {
         addToken(TokenType.STRING, value)
     }
 
+    // -------- Number handling --------
+
+    // FIX: bare number helper (supports 123 and 123.45)
+    private fun number() {
+        while (!isAtEnd() && peek().isDigit()) advance()
+        if (!isAtEnd() && peek() == '.' && peekNext().isDigit()) {
+            advance() // consume '.'
+            while (!isAtEnd() && peek().isDigit()) advance()
+        }
+        val text = source.substring(start, current)
+        val value = parseNumber(text)
+        addToken(TokenType.NUMBER, value)
+    }
+
+    /**
+     * FIX: Smart detection for "(number)".
+     * We are called immediately after consuming '('.
+     * If we see only digits (maybe one '.') followed by ')', we emit a NUMBER and consume the ')'.
+     * Otherwise, we treat the '(' as a plain LEFT_PAREN (handled in scanToken) and DO NOT consume further here.
+     */
+    private fun looksLikeParenNumber(): Boolean {
+        var i = current // position right after '('
+        if (i >= source.length || !source[i].isDigit()) return false
+
+        // integer part
+        while (i < source.length && source[i].isDigit()) i++
+
+        // optional fractional part
+        if (i < source.length && source[i] == '.') {
+            val afterDot = i + 1
+            if (afterDot >= source.length || !source[afterDot].isDigit()) return false
+            i = afterDot
+            while (i < source.length && source[i].isDigit()) i++
+        }
+
+        // must be followed by a ')'
+        if (i < source.length && source[i] == ')') return true
+        return false
+    }
+
+    // consumes "(number)" and emits NUMBER
+    private fun numberLiteralFromParens() {
+        // current is at first digit after '('
+        val numberStart = current
+        while (!isAtEnd() && (peek().isDigit())) advance()
+        if (!isAtEnd() && peek() == '.') {
+            advance()
+            while (!isAtEnd() && peek().isDigit()) advance()
+        }
+        // we know looksLikeParenNumber() ensured a ')'
+        val numberText = source.substring(numberStart, current)
+        val numberValue = parseNumber(numberText)
+        advance() // consume ')'
+        addToken(TokenType.NUMBER, numberValue)
+    }
+
+    // (kept for compatibility if called elsewhere; not used by '(' anymore)
     private fun numberLiteral() {
+        // original behavior: (number)
         if (source[start] != '(') return
 
         val numberStart = current

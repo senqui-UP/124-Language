@@ -18,8 +18,9 @@ enum class TokenType {
     PLUS_EQUAL, MINUS_EQUAL, STAR_EQUAL, 
     DOLLAR_EQUAL, PERCENT_EQUAL, STAR_STAR_EQUAL,
 
-    // Literals
-    IDENTIFIER, STRING, NUMBER,
+    // Literals 
+    IDENTIFIER, STRING, NUMBER,TRUE, FALSE, NIL,
+
 
     // Keywords
     KEYWORD,
