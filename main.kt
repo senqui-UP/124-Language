@@ -1,9 +1,38 @@
-fun main() {
-    println("Loading...")
+import java.io.File
+
+fun main(args: Array<String>) {
+    val interpreter = Interpreter()
+
+    if (args.isNotEmpty()) {
+        // Debug mode: dump tokens
+        if (args[0] == "--dump-tokens" && args.size >= 2) {
+            val path = args[1]
+            val source = File(path).readText()
+            val tokens = Scanner(source).scanTokens()
+            for (t in tokens) println("${t.line}\t${t.type}\t'${t.lexeme}'")
+            return
+        } else {
+            // Script mode: read entire file and execute
+            val path = args[0]
+            val source = File(path).readText()
+            val scanner = Scanner(source)
+            val tokens = scanner.scanTokens()
+            val parser = Parser(tokens)
+            try {
+                val statements = parser.parseStatements()
+                for (stmt in statements) interpreter.execute(stmt)
+            } catch (e: RuntimeError) {
+                val line = e.token?.line ?: 1
+                println("[line $line] Runtime error: ${e.message}")
+            } catch (e: Exception) {
+                println(e.message)
+            }
+            return
+        }
+    }
+
+    // REPL mode
     println("Welcome to PyCraft (type '/kill' to exit)")
-
-    val printer = AstPrinter()
-
     while (true) {
         print("> ")
         val input = readln()
@@ -16,11 +45,15 @@ fun main() {
         try {
             if (input.trim().startsWith("/")) {
                 val statements = parser.parseStatements()
-                for (stmt in statements) println(stmt)
+                for (stmt in statements) interpreter.execute(stmt)
             } else {
                 val expr = parser.parseExpression()
-                println(printer.print(expr))
+                val value = interpreter.evaluate(expr)
+                println(interpreter.stringify(value))
             }
+        } catch (e: RuntimeError) {
+            val line = e.token?.line ?: 1
+            println("[line $line] Runtime error: ${e.message}")
         } catch (e: Exception) {
             println(e.message)
         }

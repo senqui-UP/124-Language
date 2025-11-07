@@ -17,26 +17,37 @@ class Parser(private val tokens: List<Token>) {
     }
 
     // ---------- Statements (unchanged shape; still minimal) ----------
-    private fun statement(): Stmt {
-        if (match(TokenType.KEYWORD)) {
-            val kw = previous().lexeme
-            return when {
-                kw.startsWith("/say")      -> sayStatement()
-                kw.startsWith("/summon")   -> summonStatement()
-                kw.startsWith("/expr")     -> exprStatement()
-                kw.startsWith("/execute")  -> executeStatement()
-                kw.startsWith("/kill")     -> Stmt.Kill
+private fun statement(): Stmt {
+    if (match(TokenType.KEYWORD)) {
+        val kw = previous().lexeme
+        return when {
+            kw.startsWith("/say")     -> sayStatement()
+            kw.startsWith("/summon")  -> summonStatement()
+            kw.startsWith("/expr")    -> exprStatement()
+            kw.startsWith("/set")     -> setStatement()   // <— NEW
+            kw.startsWith("/execute") -> executeStatement()
+            kw.startsWith("/kill")    -> Stmt.Kill
             else -> throw error(previous(), "Unknown keyword: $kw")
-            }
         }
-        throw error(peek(), "Unexpected token in statement.")
     }
+    throw error(peek(), "Unexpected token in statement.")
+}
 
     private fun sayStatement(): Stmt {
-        val message = buildString {
-            while (!check(TokenType.EOF)) append(advance().lexeme).append(" ")
-        }.trim()
-        return Stmt.Say(message)
+        val sayLine = previous().line
+        val message = if (check(TokenType.STRING)) {
+            advance().literal as String
+        } else {
+            val sb = StringBuilder()
+            while (!isAtEnd() && peek().line == sayLine) {
+                sb.append(advance().lexeme)
+                if (!isAtEnd() && peek().line == sayLine) sb.append(' ')
+            }
+            sb.toString()
+        }
+        // Defensive: consume any leftover tokens on the same line to avoid stray words becoming next statements
+        while (!isAtEnd() && peek().line == sayLine) advance()
+        return Stmt.Say(message.trimEnd())
     }
 
     private fun summonStatement(): Stmt {
@@ -63,9 +74,9 @@ class Parser(private val tokens: List<Token>) {
         consume(TokenType.LEFT_BRACE, "Expected '{' before expression")
         val expr = expression()
         consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
-        val printed = AstPrinter().print(expr)
-        return Stmt.ExprAssign(name, printed)
+        return Stmt.ExprAssign(name, expr) // was: AstPrinter().print(expr)
     }
+
 
     private fun executeStatement(): Stmt {
         // Minimal stub that respects "/execute ... run { ... } [else { ... }]"
@@ -77,7 +88,9 @@ class Parser(private val tokens: List<Token>) {
         consume(TokenType.RIGHT_BRACE, "Expected '}' after run block")
 
         var elseBranch: List<Stmt>? = null
-        if (match(TokenType.KEYWORD) && previous().lexeme == "else") {
+        // Only consume an else keyword if it actually is 'else' (or '/execute else').
+        if (check(TokenType.KEYWORD) && (peek().lexeme == "else" || peek().lexeme == "/execute else")) {
+            advance()
             consume(TokenType.LEFT_BRACE, "Expected '{' to start else block")
             val list = mutableListOf<Stmt>()
             while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) list.add(statement())
@@ -87,6 +100,31 @@ class Parser(private val tokens: List<Token>) {
 
         return Stmt.Execute(cond, thenBranch, elseBranch)
     }
+private fun setStatement(): Stmt {
+    // /set @var <assign_op> <expression>
+    val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
+
+    // Recognize one of: "=", "+=", "-=", "*=", $=, $$=, %=, **=
+    val op = when {
+        match(TokenType.EQUAL)           -> previous()
+        match(TokenType.PLUS_EQUAL)      -> previous()
+        match(TokenType.MINUS_EQUAL)     -> previous()
+        match(TokenType.STAR_EQUAL)      -> previous()
+        match(TokenType.DOLLAR_EQUAL)    -> previous()
+        match(TokenType.PERCENT_EQUAL)   -> previous()
+        match(TokenType.STAR_STAR_EQUAL) -> previous()
+        else -> throw error(peek(), "Expected an assignment operator after variable.")
+    }
+
+    val expr = if (match(TokenType.LEFT_BRACE)) {
+        val e = expression()
+        consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
+        e
+    } else {
+        expression()
+    }
+    return Stmt.Assign(name, op, expr)
+}
 
     private fun expressionUntilKeyword(stop: String): String {
         val sb = StringBuilder()
@@ -252,21 +290,17 @@ class Parser(private val tokens: List<Token>) {
         return primary()
     }
 
-    // term -> var_id | "(" expression ")" | NUMBER | STRING
+    // term -> var_id | "(" expression ")" | NUMBER | TRUE | FALSE | NIL | STRING
     // (Postfix inc/dec & func_call omitted for now; see notes.)
     private fun primary(): Expr {
         when {
             match(TokenType.NUMBER) -> return Expr.Literal(previous().literal as Double?)
 
-            match(TokenType.STRING) -> {
-                // interpret "true"/"false"/"nil" from STRING (since your TokenType has no TRUE/FALSE/NIL)
-                return when ((previous().literal as String)) {
-                    "true"  -> Expr.Literal(true)
-                    "false" -> Expr.Literal(false)
-                    "nil", "null" -> Expr.Literal(null)
-                    else -> Expr.Literal(previous().literal as String)
-                }
-            }
+            match(TokenType.TRUE)  -> return Expr.Literal(true)
+            match(TokenType.FALSE) -> return Expr.Literal(false)
+            match(TokenType.NIL)   -> return Expr.Literal(null)
+
+            match(TokenType.STRING) -> return Expr.Literal(previous().literal as String)
 
             match(TokenType.LEFT_PAREN) -> {
                 val e = expression()

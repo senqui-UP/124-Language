@@ -10,5 +10,6 @@ class AstPrinter {
         is Expr.Grouping -> "(group ${print(expr.expression)})"
         is Expr.Unary -> "(${expr.operator.lexeme} ${print(expr.right)})"
         is Expr.Binary -> "(${expr.operator.lexeme} ${print(expr.left)} ${print(expr.right)})"
+        is Expr.Postfix -> "(${expr.name}${expr.operator.lexeme})"
     }
 }

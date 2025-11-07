@@ -1,0 +1,23 @@
+/whisper A simple program demonstrating variables and scope
+
+/summon String @greeting
+/expr @greeting {"Hello"}
+
+/summon String @name
+/expr @name {"World"}
+
+/say {@greeting}, {@name}!
+
+/summon int @x (10)
+/summon int @y (20)
+
+/execute if true run {
+    /summon int @x (5)  
+    /say Inner x: {@x}
+    /say Outer y: {@y}
+}
+
+/say {"Outer x: {@x}"}
+/set @x = {@x + @y}
+/say x + y = {@x}
+
