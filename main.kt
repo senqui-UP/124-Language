@@ -11,8 +11,9 @@ fun main(args: Array<String>) {
             val tokens = Scanner(source).scanTokens()
             for (t in tokens) println("${t.line}\t${t.type}\t'${t.lexeme}'")
             return
-        } else {
-            // Script mode: read entire file and execute
+        }
+        // Script mode: read entire file and execute
+        else {
             val path = args[0]
             val source = File(path).readText()
             val scanner = Scanner(source)
@@ -48,6 +49,7 @@ fun main(args: Array<String>) {
                 for (stmt in statements) interpreter.execute(stmt)
             } else {
                 val expr = parser.parseExpression()
+                // println("AST: ${AstPrinter().print(expr)}")          // AST Printer for Debugging
                 val value = interpreter.evaluate(expr)
                 println(interpreter.stringify(value))
             }

@@ -1,7 +1,7 @@
 class Parser(private val tokens: List<Token>) {
     private var current = 0
 
-    // ---------- Public entry points ----------
+    // ---------- Start -----------
     fun parseStatements(): List<Stmt> {
         val statements = mutableListOf<Stmt>()
         while (!isAtEnd()) {
@@ -16,22 +16,22 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
-    // ---------- Statements (unchanged shape; still minimal) ----------
-private fun statement(): Stmt {
-    if (match(TokenType.KEYWORD)) {
-        val kw = previous().lexeme
-        return when {
-            kw.startsWith("/say")     -> sayStatement()
-            kw.startsWith("/summon")  -> summonStatement()
-            kw.startsWith("/expr")    -> exprStatement()
-            kw.startsWith("/set")     -> setStatement()   // <— NEW
-            kw.startsWith("/execute") -> executeStatement()
-            kw.startsWith("/kill")    -> Stmt.Kill
-            else -> throw error(previous(), "Unknown keyword: $kw")
+    // ------------- Statements  ----------------
+    private fun statement(): Stmt {
+        if (match(TokenType.KEYWORD)) {
+            val kw = previous().lexeme
+            return when {
+                kw.startsWith("/say")     -> sayStatement()
+                kw.startsWith("/summon")  -> summonStatement()
+                kw.startsWith("/expr")    -> exprStatement()
+                kw.startsWith("/set")     -> setStatement()   // <— NEW
+                kw.startsWith("/execute") -> executeStatement()
+                kw.startsWith("/kill")    -> Stmt.Kill
+                else -> throw error(previous(), "Unknown keyword: $kw")
+            }
         }
+        throw error(peek(), "Unexpected token in statement.")
     }
-    throw error(peek(), "Unexpected token in statement.")
-}
 
     private fun sayStatement(): Stmt {
         val sayLine = previous().line
@@ -74,9 +74,8 @@ private fun statement(): Stmt {
         consume(TokenType.LEFT_BRACE, "Expected '{' before expression")
         val expr = expression()
         consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
-        return Stmt.ExprAssign(name, expr) // was: AstPrinter().print(expr)
+        return Stmt.ExprAssign(name, expr)
     }
-
 
     private fun executeStatement(): Stmt {
         // Minimal stub that respects "/execute ... run { ... } [else { ... }]"
@@ -100,7 +99,8 @@ private fun statement(): Stmt {
 
         return Stmt.Execute(cond, thenBranch, elseBranch)
     }
-private fun setStatement(): Stmt {
+
+    private fun setStatement(): Stmt {
     // /set @var <assign_op> <expression>
     val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
 
@@ -132,11 +132,7 @@ private fun setStatement(): Stmt {
         return sb.toString().trim()
     }
 
-    // =====================================================================
-    //                           EXPRESSIONS
-    // Matches your grammar layers using only your existing TokenType set.
-    // =====================================================================
-
+    // ------------- Expressions  ---------------
     // expression -> logical_or
     private fun expression(): Expr = logicalOr()
 
@@ -206,7 +202,6 @@ private fun setStatement(): Stmt {
     }
 
     // equality -> comparison { ( "==" | "!=" ) comparison }
-    // (Use 'is'/'is not' down in comparison per your grammar.)
     private fun equality(): Expr {
         var expr = comparison()
         while (match(TokenType.EXCL_EQUAL, TokenType.EQUAL_EQUAL)) {
@@ -280,38 +275,48 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // unary -> ( "+" | "-" | "~" | "!" | "not" ) unary | primary
+    // unary -> ( "+" | "-" | "~" | "!" | "not" ) unary | term
     private fun unary(): Expr {
         if (match(TokenType.PLUS, TokenType.MINUS, TokenType.TILDE, TokenType.EXCL, TokenType.NOT)) {
             val op = previous()
             val right = unary()
             return Expr.Unary(op, right)
         }
-        return primary()
+        return postfix()
     }
 
-    // term -> var_id | "(" expression ")" | NUMBER | TRUE | FALSE | NIL | STRING
-    // (Postfix inc/dec & func_call omitted for now; see notes.)
-    private fun primary(): Expr {
+    // for postfix ++ --
+    private fun postfix(): Expr {
+        var expr = term()
+        if (match(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS)) {
+            val op = previous()
+            // expr must be a variable identifier
+            if (expr is Expr.Literal && expr.value is String && expr.value.startsWith("@")) {
+                return Expr.Postfix(expr.value, op)
+            }
+            throw error(op, "Postfix operator requires a variable.")
+        }
+        return expr
+    }
+
+    // term -> var_id | "(" expression ")" | NUMBER | TRUE | FALSE | NULL | STRING
+    private fun term(): Expr {
         when {
+            // for keyword terms
             match(TokenType.NUMBER) -> return Expr.Literal(previous().literal as Double?)
-
-            match(TokenType.TRUE)  -> return Expr.Literal(true)
-            match(TokenType.FALSE) -> return Expr.Literal(false)
-            match(TokenType.NIL)   -> return Expr.Literal(null)
-
+            match(TokenType.TRUE)   -> return Expr.Literal(true)
+            match(TokenType.FALSE)  -> return Expr.Literal(false)
+            match(TokenType.NIL)    -> return Expr.Literal(null)
+            // for string terms
             match(TokenType.STRING) -> return Expr.Literal(previous().literal as String)
-
+            // for expressions
             match(TokenType.LEFT_PAREN) -> {
                 val e = expression()
                 consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
                 return Expr.Grouping(e)
             }
-
-            // var_id -> "@" IDENTIFIER (your scanner emits IDENTIFIER whose lexeme includes '@name')
+            // for variables / identifiers
             match(TokenType.IDENTIFIER) -> {
-                // Treat identifiers as string-likes for now (your runtime typing rules will coerce later).
-                // If you want variables to resolve later, keep as literal name for now.
                 return Expr.Literal(previous().lexeme)
             }
         }
