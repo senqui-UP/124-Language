@@ -3,27 +3,6 @@ import kotlin.math.pow
 
 class RuntimeError(val token: Token?, message: String) : RuntimeException(message)
 
-class Environment(val enclosing: Environment? = null) {
-    private val values = mutableMapOf<String, Any?>()
-
-    fun define(name: String, value: Any?) { values[name] = value }
-
-    fun get(name: String): Any? =
-        if (name in values) values[name]
-        else enclosing?.get(name)
-            ?: throw RuntimeError(null, "Undefined variable $name.")
-
-    fun assign(name: String, value: Any?) {
-        if (name in values) {
-            values[name] = value
-        } else if (enclosing != null) {
-            enclosing.assign(name, value)
-        } else {
-            throw RuntimeError(null, "Undefined variable $name.")
-        }
-    }
-}
-
 class Interpreter(
     initialEnv: Environment = Environment()
 ) {
@@ -66,23 +45,16 @@ class Interpreter(
                 env.assign(stmt.name, result)
             }
             is Stmt.Execute -> {
-                // Your parser currently stores the condition as a *raw string*.
-                // We evaluate truthiness by rescanning & parsing that expression now.
+                // Evaluate condition
                 val condVal = evalConditionString(stmt.condition)
                 val branch = if (isTruthy(condVal)) stmt.thenBranch else stmt.elseBranch
                 if (branch != null) executeBlock(branch, Environment(enclosing = env))
+                // Execute branch WITHOUT creating new scope - use current environment
+                if (branch != null) {
+                    for (s in branch) execute(s)
+                }
             }
             is Stmt.Kill -> { /* handled by main loop */ }
-        }
-    }
-
-    private fun executeBlock(statements: List<Stmt>, newEnv: Environment) {
-        val previous = env
-        try {
-            env = newEnv
-            for (s in statements) execute(s)
-        } finally {
-            env = previous
         }
     }
 
@@ -174,7 +146,7 @@ class Interpreter(
     }
 
     fun stringify(value: Any?): String = when (value) {
-        null -> "nil"
+        null -> "{NIL}"
         is Boolean -> value.toString()
         is Double -> {
             val i = value.toInt()
@@ -246,7 +218,7 @@ class Interpreter(
     }
 
     private fun strictEq(l: Any?, r: Any?): Boolean {
-        // Same “type class” and same value
+        // Same "type class" and same value
         return when {
             l == null && r == null -> true
             l is Boolean && r is Boolean -> l == r
@@ -283,7 +255,7 @@ class Interpreter(
     }
 
     private fun identity(l: Any?, r: Any?, tok: Token, not: Boolean): Boolean {
-        // “is” against type names (right operand a String type label): int|float|double|bool|char|String
+        // "is" against type names (right operand a String type label): int|float|double|bool|char|String
         val type = (r as? String)?.lowercase()
         val isType = when (type) {
             "int" -> l is Int || (l is Double && l % 1.0 == 0.0)
@@ -304,10 +276,6 @@ class Interpreter(
         "string" -> ""
         else -> null
     }
-
-    // No longer used; keep as helper if needed
-    private fun safeGet(name: String, stmt: Stmt): Any? =
-        try { env.get(name) } catch (_: RuntimeError) { null }
 
     // ===== String interpolation for /say =====
     // supports: literal text + {@var} or {#...} (we only resolve @var here)

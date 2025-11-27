@@ -101,30 +101,28 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun setStatement(): Stmt {
-    // /set @var <assign_op> <expression>
-    val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
-
-    // Recognize one of: "=", "+=", "-=", "*=", $=, $$=, %=, **=
-    val op = when {
-        match(TokenType.EQUAL)           -> previous()
-        match(TokenType.PLUS_EQUAL)      -> previous()
-        match(TokenType.MINUS_EQUAL)     -> previous()
-        match(TokenType.STAR_EQUAL)      -> previous()
-        match(TokenType.DOLLAR_EQUAL)    -> previous()
-        match(TokenType.PERCENT_EQUAL)   -> previous()
-        match(TokenType.STAR_STAR_EQUAL) -> previous()
+        // /set @var <assign_op> <expression>
+        val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
+        // Recognize one of: "=", "+=", "-=", "*=", $=, $$=, %=, **=
+        val op = when {
+            match(TokenType.EQUAL)           -> previous()
+            match(TokenType.PLUS_EQUAL)      -> previous()
+            match(TokenType.MINUS_EQUAL)     -> previous()
+            match(TokenType.STAR_EQUAL)      -> previous()
+            match(TokenType.DOLLAR_EQUAL)    -> previous()
+            match(TokenType.PERCENT_EQUAL)   -> previous()
+            match(TokenType.STAR_STAR_EQUAL) -> previous()
         else -> throw error(peek(), "Expected an assignment operator after variable.")
+        }
+        val expr = if (match(TokenType.LEFT_BRACE)) {
+            val e = expression()
+            consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
+            e
+        } else {
+            expression()
+        }
+        return Stmt.Assign(name, op, expr)
     }
-
-    val expr = if (match(TokenType.LEFT_BRACE)) {
-        val e = expression()
-        consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
-        e
-    } else {
-        expression()
-    }
-    return Stmt.Assign(name, op, expr)
-}
 
     private fun expressionUntilKeyword(stop: String): String {
         val sb = StringBuilder()
