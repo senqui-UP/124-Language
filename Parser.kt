@@ -1,6 +1,7 @@
 class Parser(private val tokens: List<Token>) {
     private var current = 0
 
+<<<<<<< HEAD
     fun parseProgram(): Program = Program(parseStatements())
 
     fun parseProgramWithTree(): ParseResult {
@@ -9,6 +10,9 @@ class Parser(private val tokens: List<Token>) {
         return ParseResult(program, tree)
     }
 
+=======
+    // ---------- Start -----------
+>>>>>>> 132f4d2a36a174daacfd706c4be1e26ab3a865e6
     fun parseStatements(): List<Stmt> {
         val statements = mutableListOf<Stmt>()
         while (!isAtEnd()) {
@@ -23,6 +27,7 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
+<<<<<<< HEAD
 private fun statement(): Stmt {
     if (match(TokenType.KEYWORD)) {
         val kw = previous().lexeme
@@ -34,10 +39,30 @@ private fun statement(): Stmt {
             kw.startsWith("/execute") -> executeStatement()
             kw.startsWith("/kill")    -> Stmt.Kill
             else -> throw error(previous(), "Unknown keyword: $kw")
+=======
+    // ------------- Statements  ----------------
+    private fun statement(): Stmt {
+        if (match(TokenType.KEYWORD)) {
+            val kw = previous().lexeme
+            return when {
+                kw.startsWith("/say")     -> sayStatement()
+                kw.startsWith("/summon")  -> summonStatement()
+                kw.startsWith("/expr")    -> exprStatement()
+                kw.startsWith("/set")     -> setStatement()   // <— NEW
+                kw.startsWith("/execute") -> executeStatement()
+                kw.startsWith("/kill")    -> Stmt.Kill
+                else -> throw error(previous(), "Unknown keyword: $kw")
+            }
+>>>>>>> 132f4d2a36a174daacfd706c4be1e26ab3a865e6
         }
+        throw error(peek(), "Unexpected token in statement.")
     }
+<<<<<<< HEAD
     throw error(peek(), "Unexpected token in statement.")
 }
+=======
+
+>>>>>>> 132f4d2a36a174daacfd706c4be1e26ab3a865e6
     private fun sayStatement(): Stmt {
         val sayLine = previous().line
         val message = if (check(TokenType.STRING)) {
@@ -74,9 +99,8 @@ private fun statement(): Stmt {
         consume(TokenType.LEFT_BRACE, "Expected '{' before expression")
         val expr = expression()
         consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
-        return Stmt.ExprAssign(name, expr) // was: AstPrinter().print(expr)
+        return Stmt.ExprAssign(name, expr)
     }
-
 
     private fun executeStatement(): Stmt {
         val cond = expressionUntilKeyword("run")
@@ -98,6 +122,7 @@ private fun statement(): Stmt {
 
         return Stmt.Execute(cond, thenBranch, elseBranch)
     }
+<<<<<<< HEAD
 private fun setStatement(): Stmt {
     val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
  
@@ -109,18 +134,32 @@ private fun setStatement(): Stmt {
         match(TokenType.DOLLAR_EQUAL)    -> previous()
         match(TokenType.PERCENT_EQUAL)   -> previous()
         match(TokenType.STAR_STAR_EQUAL) -> previous()
-        else -> throw error(peek(), "Expected an assignment operator after variable.")
-    }
+=======
 
-    val expr = if (match(TokenType.LEFT_BRACE)) {
-        val e = expression()
-        consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
-        e
-    } else {
-        expression()
+    private fun setStatement(): Stmt {
+        // /set @var <assign_op> <expression>
+        val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
+        // Recognize one of: "=", "+=", "-=", "*=", $=, $$=, %=, **=
+        val op = when {
+            match(TokenType.EQUAL)           -> previous()
+            match(TokenType.PLUS_EQUAL)      -> previous()
+            match(TokenType.MINUS_EQUAL)     -> previous()
+            match(TokenType.STAR_EQUAL)      -> previous()
+            match(TokenType.DOLLAR_EQUAL)    -> previous()
+            match(TokenType.PERCENT_EQUAL)   -> previous()
+            match(TokenType.STAR_STAR_EQUAL) -> previous()
+>>>>>>> 132f4d2a36a174daacfd706c4be1e26ab3a865e6
+        else -> throw error(peek(), "Expected an assignment operator after variable.")
+        }
+        val expr = if (match(TokenType.LEFT_BRACE)) {
+            val e = expression()
+            consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
+            e
+        } else {
+            expression()
+        }
+        return Stmt.Assign(name, op, expr)
     }
-    return Stmt.Assign(name, op, expr)
-}
 
     private fun expressionUntilKeyword(stop: String): String {
         val sb = StringBuilder()
@@ -128,6 +167,11 @@ private fun setStatement(): Stmt {
         return sb.toString().trim()
     }
 
+<<<<<<< HEAD
+=======
+    // ------------- Expressions  ---------------
+    // expression -> logical_or
+>>>>>>> 132f4d2a36a174daacfd706c4be1e26ab3a865e6
     private fun expression(): Expr = logicalOr()
 
     private fun logicalOr(): Expr {
@@ -189,6 +233,10 @@ private fun setStatement(): Stmt {
         return expr
     }
 
+<<<<<<< HEAD
+=======
+    // equality -> comparison { ( "==" | "!=" ) comparison }
+>>>>>>> 132f4d2a36a174daacfd706c4be1e26ab3a865e6
     private fun equality(): Expr {
         var expr = comparison()
         while (match(TokenType.EXCL_EQUAL, TokenType.EQUAL_EQUAL)) {
@@ -259,34 +307,51 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // unary -> ( "+" | "-" | "~" | "!" | "not" ) unary | primary
+    // unary -> ( "+" | "-" | "~" | "!" | "not" ) unary | term
     private fun unary(): Expr {
         if (match(TokenType.PLUS, TokenType.MINUS, TokenType.TILDE, TokenType.EXCL, TokenType.NOT)) {
             val op = previous()
             val right = unary()
             return Expr.Unary(op, right)
         }
-        return primary()
+        return postfix()
     }
 
-    // term -> var_id | "(" expression ")" | NUMBER | TRUE | FALSE | NIL | STRING
-    // (Postfix inc/dec & func_call omitted for now; see notes.)
-    private fun primary(): Expr {
+    // for postfix ++ --
+    private fun postfix(): Expr {
+        var expr = term()
+        if (match(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS)) {
+            val op = previous()
+            // expr must be a variable identifier
+            if (expr is Expr.Literal && expr.value is String && expr.value.startsWith("@")) {
+                return Expr.Postfix(expr.value, op)
+            }
+            throw error(op, "Postfix operator requires a variable.")
+        }
+        return expr
+    }
+
+    // term -> var_id | "(" expression ")" | NUMBER | TRUE | FALSE | NULL | STRING
+    private fun term(): Expr {
         when {
+            // for keyword terms
             match(TokenType.NUMBER) -> return Expr.Literal(previous().literal as Double?)
-
-            match(TokenType.TRUE)  -> return Expr.Literal(true)
-            match(TokenType.FALSE) -> return Expr.Literal(false)
-            match(TokenType.NIL)   -> return Expr.Literal(null)
-
+            match(TokenType.TRUE)   -> return Expr.Literal(true)
+            match(TokenType.FALSE)  -> return Expr.Literal(false)
+            match(TokenType.NIL)    -> return Expr.Literal(null)
+            // for string terms
             match(TokenType.STRING) -> return Expr.Literal(previous().literal as String)
-
+            // for expressions
             match(TokenType.LEFT_PAREN) -> {
                 val e = expression()
                 consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
                 return Expr.Grouping(e)
             }
+<<<<<<< HEAD
 
+=======
+            // for variables / identifiers
+>>>>>>> 132f4d2a36a174daacfd706c4be1e26ab3a865e6
             match(TokenType.IDENTIFIER) -> {
                 return Expr.Literal(previous().lexeme)
             }

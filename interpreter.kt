@@ -1,6 +1,8 @@
 import kotlin.math.floor
 import kotlin.math.pow
 
+class RuntimeError(val token: Token?, message: String) : RuntimeException(message)
+
 class Interpreter(
     initialEnv: Environment = Environment()
 ) {
@@ -41,25 +43,19 @@ class Interpreter(
                 env.assign(stmt.name, result)
             }
             is Stmt.Execute -> {
+                // Evaluate condition
                 val condVal = evalConditionString(stmt.condition)
                 val branch = if (isTruthy(condVal)) stmt.thenBranch else stmt.elseBranch
                 if (branch != null) executeBlock(branch, Environment(enclosing = env))
-            }
-            is Stmt.Kill -> {} }
+                // Execute branch WITHOUT creating new scope - use current environment
+                if (branch != null) {
+
+            is Stmt.Kill -> { /* handled by main loop */ }
         }
     }
+            is Stmt.Kill -> {}
+    // ===== Expression evaluation =====
 
-    private fun executeBlock(statements: List<Stmt>, newEnv: Environment) {
-        val previous = env
-        try {
-            env = newEnv
-            for (s in statements) execute(s)
-        } finally {
-            env = previous
-        }
-    }
-
-//evaluates unary expression
     private fun evalUnary(e: Expr.Unary): Any? {
         val r = evaluate(e.right)
         return when (e.operator.type) {
@@ -144,9 +140,9 @@ class Interpreter(
     }
 
     fun stringify(value: Any?): String = when (value) {
-        null -> "null"
+        null -> "{NIL}"
         is Boolean -> value.toString()
-        is Double -> {
+        null -> "null"
             val i = value.toInt()
             if (i.toDouble() == value) i.toString() else value.toString()
         }
@@ -213,7 +209,7 @@ class Interpreter(
     }
 
     private fun strictEq(l: Any?, r: Any?): Boolean {
-        // Same “type class” and same value
+        // Same "type class" and same value
         return when {
             l == null && r == null -> true
             l is Boolean && r is Boolean -> l == r
@@ -250,7 +246,7 @@ class Interpreter(
     }
 
     private fun identity(l: Any?, r: Any?, tok: Token, not: Boolean): Boolean {
-        // “is” against type names (right operand a String type label): int|float|double|bool|char|String
+        // "is" against type names (right operand a String type label): int|float|double|bool|char|String
         val type = (r as? String)?.lowercase()
         val isType = when (type) {
             "int" -> l is Int || (l is Double && l % 1.0 == 0.0)
@@ -272,12 +268,9 @@ class Interpreter(
         else -> null
     }
 
-    private fun safeGet(name: String, stmt: Stmt): Any? =
-        try { env.get(name) } catch (_: RuntimeError) { null }
+    // ===== String interpolation for /say =====
+    // supports: literal text + {@var} or {#...} (we only resolve @var here)
 
-    private fun interpolate(raw: String): String {
-        val sb = StringBuilder()
-        var i = 0
         while (i < raw.length) {
             if (raw[i] == '{') {
                 val end = raw.indexOf('}', i+1)
