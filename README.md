@@ -90,3 +90,15 @@ else
 
 ## Design Rationale
 The rationale for our design choices was to make it similar to how Minecraft commands work. They already have their own syntaxes, but we expanded it to be more for coding and programming instead of just their functions in Minecraft. New commands/keywords are created so that it’s still easy to understand and not just simply obfuscating and changing keywords for the sake of changing them.
+
+## How to Run
+kotlinc *.kt -include-runtime -d PyCraft.jar
+java -jar PyCraft.jar path\to\program.pc
+
+Interactive Evaluator
+java -jar PyCraft.jar
+
+Run Files
+java -jar PyCraft.jar test.txt
+ 
+

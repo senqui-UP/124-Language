@@ -17,7 +17,7 @@
     /say Outer y: {@y}
 }
 
-/say {"Outer x: {@x}"}
+/say Outer x: {@x}
 /set @x = {@x + @y}
 /say x + y = {@x}
 

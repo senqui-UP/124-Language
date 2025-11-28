@@ -1,7 +1,14 @@
 class Parser(private val tokens: List<Token>) {
     private var current = 0
 
-    // ---------- Public entry points ----------
+    fun parseProgram(): Program = Program(parseStatements())
+
+    fun parseProgramWithTree(): ParseResult {
+        val program = parseProgram()
+        val tree = ParseTreeBuilder.fromProgram(program)
+        return ParseResult(program, tree)
+    }
+
     fun parseStatements(): List<Stmt> {
         val statements = mutableListOf<Stmt>()
         while (!isAtEnd()) {
@@ -16,7 +23,6 @@ class Parser(private val tokens: List<Token>) {
         return expr
     }
 
-    // ---------- Statements (unchanged shape; still minimal) ----------
 private fun statement(): Stmt {
     if (match(TokenType.KEYWORD)) {
         val kw = previous().lexeme
@@ -24,7 +30,7 @@ private fun statement(): Stmt {
             kw.startsWith("/say")     -> sayStatement()
             kw.startsWith("/summon")  -> summonStatement()
             kw.startsWith("/expr")    -> exprStatement()
-            kw.startsWith("/set")     -> setStatement()   // <— NEW
+            kw.startsWith("/set")     -> setStatement()   // 
             kw.startsWith("/execute") -> executeStatement()
             kw.startsWith("/kill")    -> Stmt.Kill
             else -> throw error(previous(), "Unknown keyword: $kw")
@@ -32,7 +38,6 @@ private fun statement(): Stmt {
     }
     throw error(peek(), "Unexpected token in statement.")
 }
-
     private fun sayStatement(): Stmt {
         val sayLine = previous().line
         val message = if (check(TokenType.STRING)) {
@@ -45,13 +50,10 @@ private fun statement(): Stmt {
             }
             sb.toString()
         }
-        // Defensive: consume any leftover tokens on the same line to avoid stray words becoming next statements
         while (!isAtEnd() && peek().line == sayLine) advance()
         return Stmt.Say(message.trimEnd())
     }
-
     private fun summonStatement(): Stmt {
-        // /summon <type> @var [(number)]
         val typeTok = consumeOneOf("Expected type after /summon", TokenType.STRING, TokenType.IDENTIFIER)
         val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
 
@@ -61,7 +63,6 @@ private fun statement(): Stmt {
             consume(TokenType.RIGHT_PAREN, "Expected ')' after number")
             value = (numTok.literal as? Double)
         } else if (match(TokenType.NUMBER)) {
-            // allow bare numeric initializer too
             value = (previous().literal as? Double)
         }
 
@@ -69,7 +70,6 @@ private fun statement(): Stmt {
     }
 
     private fun exprStatement(): Stmt {
-        // /expr @var { <expression> }
         val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
         consume(TokenType.LEFT_BRACE, "Expected '{' before expression")
         val expr = expression()
@@ -79,7 +79,6 @@ private fun statement(): Stmt {
 
 
     private fun executeStatement(): Stmt {
-        // Minimal stub that respects "/execute ... run { ... } [else { ... }]"
         val cond = expressionUntilKeyword("run")
         val thenBranch = mutableListOf<Stmt>()
         consume(TokenType.KEYWORD, "Expected 'run' keyword")
@@ -88,7 +87,6 @@ private fun statement(): Stmt {
         consume(TokenType.RIGHT_BRACE, "Expected '}' after run block")
 
         var elseBranch: List<Stmt>? = null
-        // Only consume an else keyword if it actually is 'else' (or '/execute else').
         if (check(TokenType.KEYWORD) && (peek().lexeme == "else" || peek().lexeme == "/execute else")) {
             advance()
             consume(TokenType.LEFT_BRACE, "Expected '{' to start else block")
@@ -101,10 +99,8 @@ private fun statement(): Stmt {
         return Stmt.Execute(cond, thenBranch, elseBranch)
     }
 private fun setStatement(): Stmt {
-    // /set @var <assign_op> <expression>
     val name = consume(TokenType.IDENTIFIER, "Expected variable name").lexeme
-
-    // Recognize one of: "=", "+=", "-=", "*=", $=, $$=, %=, **=
+ 
     val op = when {
         match(TokenType.EQUAL)           -> previous()
         match(TokenType.PLUS_EQUAL)      -> previous()
@@ -132,15 +128,8 @@ private fun setStatement(): Stmt {
         return sb.toString().trim()
     }
 
-    // =====================================================================
-    //                           EXPRESSIONS
-    // Matches your grammar layers using only your existing TokenType set.
-    // =====================================================================
-
-    // expression -> logical_or
     private fun expression(): Expr = logicalOr()
 
-    // logical_or -> logical_and { "or" logical_and }
     private fun logicalOr(): Expr {
         var expr = logicalAnd()
         while (match(TokenType.OR)) {
@@ -151,7 +140,6 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // logical_and -> logical_not { "and" logical_not }
     private fun logicalAnd(): Expr {
         var expr = logicalNot()
         while (match(TokenType.AND)) {
@@ -162,7 +150,6 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // logical_not -> "!" logical_not | "not" logical_not | bitwise_or
     private fun logicalNot(): Expr {
         if (match(TokenType.EXCL, TokenType.NOT)) {
             val op = previous()
@@ -172,7 +159,6 @@ private fun setStatement(): Stmt {
         return bitwiseOr()
     }
 
-    // bitwise_or -> bitwise_xor { "|" bitwise_xor }
     private fun bitwiseOr(): Expr {
         var expr = bitwiseXor()
         while (match(TokenType.PIPE)) {
@@ -183,7 +169,6 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // bitwise_xor -> bitwise_and { "^" bitwise_and }
     private fun bitwiseXor(): Expr {
         var expr = bitwiseAnd()
         while (match(TokenType.CARET)) {
@@ -194,7 +179,6 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // bitwise_and -> equality { "&" equality }
     private fun bitwiseAnd(): Expr {
         var expr = equality()
         while (match(TokenType.AMPERSAND)) {
@@ -205,8 +189,6 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // equality -> comparison { ( "==" | "!=" ) comparison }
-    // (Use 'is'/'is not' down in comparison per your grammar.)
     private fun equality(): Expr {
         var expr = comparison()
         while (match(TokenType.EXCL_EQUAL, TokenType.EQUAL_EQUAL)) {
@@ -217,8 +199,6 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // comparison -> shift { comparison_op shift }
-    // comparison_op -> "<" | "<=" | ">" | ">=" | "is" | "is not" | "in" | "not in"
     private fun comparison(): Expr {
         var expr = shift()
         while (true) {
@@ -236,7 +216,6 @@ private fun setStatement(): Stmt {
         return expr
     }
 
-    // shift -> add_sub { ( "<<" | ">>" ) add_sub }
     private fun shift(): Expr {
         var expr = addSub()
         while (match(TokenType.LEFT_SHIFT, TokenType.RIGHT_SHIFT)) {
@@ -308,17 +287,13 @@ private fun setStatement(): Stmt {
                 return Expr.Grouping(e)
             }
 
-            // var_id -> "@" IDENTIFIER (your scanner emits IDENTIFIER whose lexeme includes '@name')
             match(TokenType.IDENTIFIER) -> {
-                // Treat identifiers as string-likes for now (your runtime typing rules will coerce later).
-                // If you want variables to resolve later, keep as literal name for now.
                 return Expr.Literal(previous().lexeme)
             }
         }
         throw error(peek(), "Expect expression.")
     }
 
-    // ---------- helpers ----------
     private fun match(vararg types: TokenType): Boolean {
         for (type in types) if (check(type)) { advance(); return true }
         return false

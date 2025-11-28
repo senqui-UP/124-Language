@@ -237,11 +237,9 @@
                 }
             }
 
-            // Consume the word
             while (!isAtEnd() && (peek().isLetterOrDigit() || peek() == '_')) advance()
             val text = source.substring(start, current)
 
-            // Booleans / nil-null
             if (text == "true") {
                 addToken(TokenType.TRUE)
             } else if (text == "false") {
@@ -249,11 +247,9 @@
             } else if (text == "null" || text == "nil") {
                 addToken(TokenType.NIL)
             }
-            // Check if it's a logical operator
             else if (logicalOperators.contains(text)) {
                 addToken(logicalOperators[text]!!)
             } else {
-                // Fall back to normal string or keyword handling
                 if (keywords.contains(text)) {
                     addToken(TokenType.KEYWORD)
                 } else {
@@ -263,7 +259,6 @@
         }
 
         private fun stringOrKeyword() {
-            // Check multi-word keywords first
             for (kw in multiWordKeywords) {
                 if (source.substring(current - 1).startsWith(kw)) {
                     repeat(kw.length - 1) { advance() }
@@ -272,7 +267,6 @@
                 }
             }
 
-            // Check single-word keyword
             while (!isAtEnd() && (peek().isLetterOrDigit() || peek() == '_')) advance()
             val text = source.substring(start, current)
 
@@ -294,9 +288,6 @@
             addToken(TokenType.STRING, value)
         }
 
-        // -------- Number handling --------
-
-        // FIX: bare number helper (supports 123 and 123.45)
         private fun number() {
             while (!isAtEnd() && peek().isDigit()) advance()
             if (!isAtEnd() && peek() == '.' && peekNext().isDigit()) {
@@ -308,12 +299,6 @@
             addToken(TokenType.NUMBER, value)
         }
 
-        /**
-         * FIX: Smart detection for "(number)".
-         * We are called immediately after consuming '('.
-         * If we see only digits (maybe one '.') followed by ')', we emit a NUMBER and consume the ')'.
-         * Otherwise, we treat the '(' as a plain LEFT_PAREN (handled in scanToken) and DO NOT consume further here.
-         */
         private fun looksLikeParenNumber(): Boolean {
             var i = current // position right after '('
             if (i >= source.length || !source[i].isDigit()) return false
@@ -321,7 +306,6 @@
             // integer part
             while (i < source.length && source[i].isDigit()) i++
 
-            // optional fractional part
             if (i < source.length && source[i] == '.') {
                 val afterDot = i + 1
                 if (afterDot >= source.length || !source[afterDot].isDigit()) return false
@@ -329,30 +313,25 @@
                 while (i < source.length && source[i].isDigit()) i++
             }
 
-            // must be followed by a ')'
             if (i < source.length && source[i] == ')') return true
             return false
         }
 
-        // consumes "(number)" and emits NUMBER
+        // consumes number and emits NUMBER
         private fun numberLiteralFromParens() {
-            // current is at first digit after '('
             val numberStart = current
             while (!isAtEnd() && (peek().isDigit())) advance()
             if (!isAtEnd() && peek() == '.') {
                 advance()
                 while (!isAtEnd() && peek().isDigit()) advance()
             }
-            // we know looksLikeParenNumber() ensured a ')'
             val numberText = source.substring(numberStart, current)
             val numberValue = parseNumber(numberText)
-            advance() // consume ')'
+            advance()
             addToken(TokenType.NUMBER, numberValue)
         }
 
-        // (kept for compatibility if called elsewhere; not used by '(' anymore)
         private fun numberLiteral() {
-            // original behavior: (number)
             if (source[start] != '(') return
 
             val numberStart = current
@@ -365,7 +344,7 @@
 
             val numberText = source.substring(numberStart, current)
             val numberValue = parseNumber(numberText)
-            advance() // consume ')'
+            advance() 
             addToken(TokenType.NUMBER, numberValue)
         }
 
@@ -374,7 +353,7 @@
                 error("Identifier must start with @ followed by a letter")
                 return
             }
-            advance() // first letter
+            advance() 
             var length = 2
             while ((peek().isLetterOrDigit() || peek() == '_') && length < 51) {
                 advance()
@@ -394,7 +373,7 @@
                 error("Unterminated string")
                 return
             }
-            advance() // closing quote
+            advance() 
             val value = source.substring(start + 1, current - 1)
             addToken(TokenType.STRING, value)
         }

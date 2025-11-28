@@ -19,8 +19,8 @@ fun main(args: Array<String>) {
             val tokens = scanner.scanTokens()
             val parser = Parser(tokens)
             try {
-                val statements = parser.parseStatements()
-                for (stmt in statements) interpreter.execute(stmt)
+                val program = parser.parseProgram()
+                for (stmt in program.statements) interpreter.execute(stmt)
             } catch (e: RuntimeError) {
                 val line = e.token?.line ?: 1
                 println("[line $line] Runtime error: ${e.message}")
@@ -44,8 +44,8 @@ fun main(args: Array<String>) {
 
         try {
             if (input.trim().startsWith("/")) {
-                val statements = parser.parseStatements()
-                for (stmt in statements) interpreter.execute(stmt)
+                val program = parser.parseProgram()
+                for (stmt in program.statements) interpreter.execute(stmt)
             } else {
                 val expr = parser.parseExpression()
                 val value = interpreter.evaluate(expr)

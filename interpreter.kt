@@ -1,34 +1,10 @@
 import kotlin.math.floor
 import kotlin.math.pow
 
-class RuntimeError(val token: Token?, message: String) : RuntimeException(message)
-
-class Environment(val enclosing: Environment? = null) {
-    private val values = mutableMapOf<String, Any?>()
-
-    fun define(name: String, value: Any?) { values[name] = value }
-
-    fun get(name: String): Any? =
-        if (name in values) values[name]
-        else enclosing?.get(name)
-            ?: throw RuntimeError(null, "Undefined variable $name.")
-
-    fun assign(name: String, value: Any?) {
-        if (name in values) {
-            values[name] = value
-        } else if (enclosing != null) {
-            enclosing.assign(name, value)
-        } else {
-            throw RuntimeError(null, "Undefined variable $name.")
-        }
-    }
-}
-
 class Interpreter(
     initialEnv: Environment = Environment()
 ) {
     private var env: Environment = initialEnv
-    // ===== Public API =====
     fun evaluate(expr: Expr): Any? = when (expr) {
         is Expr.Literal  -> resolveLiteral(expr.value)
         is Expr.Grouping -> evaluate(expr.expression)
@@ -43,7 +19,6 @@ class Interpreter(
                 println(interpolate(stmt.message))
             }
             is Stmt.Summon -> {
-                // /summon <type> @name [(number)] | bare number
                 env.define(stmt.name, stmt.value ?: defaultValueForType(stmt.type))
             }
             is Stmt.ExprAssign -> {
@@ -66,13 +41,11 @@ class Interpreter(
                 env.assign(stmt.name, result)
             }
             is Stmt.Execute -> {
-                // Your parser currently stores the condition as a *raw string*.
-                // We evaluate truthiness by rescanning & parsing that expression now.
                 val condVal = evalConditionString(stmt.condition)
                 val branch = if (isTruthy(condVal)) stmt.thenBranch else stmt.elseBranch
                 if (branch != null) executeBlock(branch, Environment(enclosing = env))
             }
-            is Stmt.Kill -> { /* handled by main loop */ }
+            is Stmt.Kill -> {} }
         }
     }
 
@@ -86,8 +59,7 @@ class Interpreter(
         }
     }
 
-    // ===== Expression evaluation =====
-
+//evaluates unary expression
     private fun evalUnary(e: Expr.Unary): Any? {
         val r = evaluate(e.right)
         return when (e.operator.type) {
@@ -163,18 +135,16 @@ class Interpreter(
         return original
     }
 
-    // ===== Conversions & helpers =====
 
-    // Variables are scanned as STRINGs like "@x" (per current primary rule); resolve them here.
     private fun resolveLiteral(v: Any?): Any? {
         if (v is String && v.startsWith("@") && v.length > 1) {
-            return env.get(v) // @var
+            return env.get(v) 
         }
         return v
     }
 
     fun stringify(value: Any?): String = when (value) {
-        null -> "nil"
+        null -> "null"
         is Boolean -> value.toString()
         is Double -> {
             val i = value.toInt()
@@ -214,8 +184,6 @@ class Interpreter(
     }
 
     private fun plus(l: Any?, r: Any?, op: Token): Any? {
-        // Implicit conversion precedence: Boolean → Numeric → String
-        // If both numeric-parsable -> numeric add; else -> concatenate as strings
         val ln = (l as? String)?.toDoubleOrNull() ?: (l as? Double)
         val rn = (r as? String)?.toDoubleOrNull() ?: (r as? Double)
         return if (ln != null && rn != null) (ln + rn) else "${stringify(l)}${stringify(r)}"
@@ -235,7 +203,6 @@ class Interpreter(
     }
 
     private fun looseEq(l: Any?, r: Any?): Boolean {
-        // Try boolean → numeric → string
         if ((l is Boolean || l is String) && (r is Boolean || r is String)) {
             val lb = toBoolOrNull(l); val rb = toBoolOrNull(r)
             if (lb != null && rb != null) return lb == rb
@@ -305,12 +272,9 @@ class Interpreter(
         else -> null
     }
 
-    // No longer used; keep as helper if needed
     private fun safeGet(name: String, stmt: Stmt): Any? =
         try { env.get(name) } catch (_: RuntimeError) { null }
 
-    // ===== String interpolation for /say =====
-    // supports: literal text + {@var} or {#...} (we only resolve @var here)
     private fun interpolate(raw: String): String {
         val sb = StringBuilder()
         var i = 0
@@ -322,7 +286,6 @@ class Interpreter(
                     val value = if (inside.startsWith("@")) {
                         stringify(runCatching { env.get(inside) }.getOrNull())
                     } else {
-                        // future: function call evaluation {#func(...)}
                         inside
                     }
                     sb.append(value)
