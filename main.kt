@@ -41,17 +41,17 @@ fun main(args: Array<String>) {
 
         val scanner = Scanner(input)
         val tokens = scanner.scanTokens()
-        val parser = Parser(tokens)
+            val parser = Parser(tokens)
 
-        try {
-            if (input.trim().startsWith("/")) {
-                val program = parser.parseProgram()
-                for (stmt in program.statements) interpreter.execute(stmt)
-            } else {
-                val expr = parser.parseExpression()
-                // println("AST: ${AstPrinter().print(expr)}")          // AST Printer for Debugging
-                val value = interpreter.evaluate(expr)
-                println(interpreter.stringify(value))
+            try {
+                if (input.trim().startsWith("/")) {
+                    val program = parser.parseProgram()
+                    for (stmt in program.statements) interpreter.execute(stmt)
+                } else {
+                    val expr = parser.parseExpression()
+                    // println("AST: ${AstPrinter().print(expr)}")          // AST Printer for Debugging
+                    val value = interpreter.evaluate(expr)
+                    println(interpreter.stringify(value))
             }
         } catch (e: RuntimeError) {
             val line = e.token?.line ?: 1

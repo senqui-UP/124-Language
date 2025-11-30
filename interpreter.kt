@@ -1,63 +1,118 @@
 import kotlin.math.floor
 import kotlin.math.pow
 
-class RuntimeError(val token: Token?, message: String) : RuntimeException(message)
-
 class Interpreter(
     initialEnv: Environment = Environment()
 ) {
     private var env: Environment = initialEnv
-    fun evaluate(expr: Expr): Any? = when (expr) {
-        is Expr.Literal  -> resolveLiteral(expr.value)
-        is Expr.Grouping -> evaluate(expr.expression)
-        is Expr.Unary    -> evalUnary(expr)
-        is Expr.Binary   -> evalBinary(expr)
-        is Expr.Postfix  -> evalPostfix(expr)
+
+    init {
+        defineNativeFunctions()
     }
 
-    fun execute(stmt: Stmt) {
-        when (stmt) {
-            is Stmt.Say -> {
-                println(interpolate(stmt.message))
-            }
-            is Stmt.Summon -> {
-                env.define(stmt.name, stmt.value ?: defaultValueForType(stmt.type))
-            }
-            is Stmt.ExprAssign -> {
-                val v = evaluate(stmt.expr)
-                env.assign(stmt.name, v)
-            }
-            is Stmt.Assign -> {
-                val right = evaluate(stmt.expr)
-                val current = env.get(stmt.name)
-                val result = when (stmt.op.type) {
-                    TokenType.EQUAL -> right
-                    TokenType.PLUS_EQUAL -> plus(current, right, stmt.op)
-                    TokenType.MINUS_EQUAL -> numeric(current, right, stmt.op) { a, b -> a - b }
-                    TokenType.STAR_EQUAL -> numeric(current, right, stmt.op) { a, b -> a * b }
-                    TokenType.DOLLAR_EQUAL -> divide(current, right, stmt.op, floorDiv=false)
-                    TokenType.PERCENT_EQUAL -> numeric(current, right, stmt.op) { a, b -> a % b }
-                    TokenType.STAR_STAR_EQUAL -> numeric(current, right, stmt.op) { a, b -> a.pow(b) }
-                    else -> throw RuntimeError(stmt.op, "Unsupported assignment operator.")
-                }
-                env.assign(stmt.name, result)
-            }
-            is Stmt.Execute -> {
-                // Evaluate condition
-                val condVal = evalConditionString(stmt.condition)
-                val branch = if (isTruthy(condVal)) stmt.thenBranch else stmt.elseBranch
-                if (branch != null) executeBlock(branch, Environment(enclosing = env))
-                // Execute branch WITHOUT creating new scope - use current environment
-                if (branch != null) {
+    fun evaluate(expr: ParseNode.ExprNode): Any? = when (expr) {
+        is ParseNode.ExprNode.LiteralNode -> resolveLiteral(expr.token)
+        is ParseNode.ExprNode.GroupingNode -> evaluate(expr.expr)
+        is ParseNode.ExprNode.UnaryNode -> evalUnary(expr)
+        is ParseNode.ExprNode.BinaryNode -> evalBinary(expr)
+        is ParseNode.ExprNode.PostfixNode -> evalPostfix(expr)
+        is ParseNode.ExprNode.CallNode -> evalCall(expr)
+    }
 
-            is Stmt.Kill -> { /* handled by main loop */ }
+    fun execute(stmt: ParseNode.StmtNode) {
+        when (stmt) {
+            is ParseNode.StmtNode.SayNode -> println(interpolate(stmt.message.literal as? String ?: stmt.message.lexeme))
+            is ParseNode.StmtNode.SummonNode -> env.define(stmt.name.lexeme, stmt.value?.literal ?: defaultValueForType(stmt.type.lexeme))
+            is ParseNode.StmtNode.ExprAssignNode -> env.assign(stmt.name.lexeme, evaluate(stmt.expr))
+            is ParseNode.StmtNode.SetNode -> executeAssign(stmt)
+            is ParseNode.StmtNode.FunctionDeclNode -> declareFunction(stmt)
+            is ParseNode.StmtNode.ReturnNode -> throw Return(stmt.value?.let { evaluate(it) })
+            is ParseNode.StmtNode.ExecuteIfNode -> executeIf(stmt)
+            is ParseNode.StmtNode.ExecuteWhileNode -> executeWhile(stmt)
+            is ParseNode.StmtNode.ExecuteForNode -> executeFor(stmt)
+            is ParseNode.StmtNode.KillNode -> {} // handled by main loop
         }
     }
-            is Stmt.Kill -> {}
-    // ===== Expression evaluation =====
 
-    private fun evalUnary(e: Expr.Unary): Any? {
-        val r = evaluate(e.right)
+    fun executeBlock(stmts: List<ParseNode.StmtNode>, scope: Environment) {
+        val previous = env
+        try {
+            env = scope
+            stmts.forEach { execute(it) }
+        } finally {
+            env = previous
+        }
+    }
+
+    // ==== Statements =======================================================
+    private fun executeAssign(stmt: ParseNode.StmtNode.SetNode) {
+        val right = evaluate(stmt.expr)
+        val current = env.get(stmt.name.lexeme)
+        val result = when (stmt.op.type) {
+            TokenType.EQUAL -> right
+            TokenType.PLUS_EQUAL -> plus(current, right, stmt.op)
+            TokenType.MINUS_EQUAL -> numeric(current, right, stmt.op) { a, b -> a - b }
+            TokenType.STAR_EQUAL -> numeric(current, right, stmt.op) { a, b -> a * b }
+            TokenType.DOLLAR_EQUAL -> divide(current, right, stmt.op, floorDiv = false)
+            TokenType.DOLLAR_DOLLAR_EQUAL -> divide(current, right, stmt.op, floorDiv = true)
+            TokenType.PERCENT_EQUAL -> numeric(current, right, stmt.op) { a, b -> a % b }
+            TokenType.STAR_STAR_EQUAL -> numeric(current, right, stmt.op) { a, b -> a.pow(b) }
+            else -> throw RuntimeError(stmt.op, "Unsupported assignment operator.")
+        }
+        env.assign(stmt.name.lexeme, result)
+    }
+
+    private fun executeIf(stmt: ParseNode.StmtNode.ExecuteIfNode) {
+        val firstCond = evalConditionTokens(stmt.condition)
+        if (isTruthy(firstCond)) {
+            executeBlock(stmt.body, Environment(enclosing = env))
+            return
+        }
+
+        for (elif in stmt.elifBranches) {
+            val condVal = evalConditionTokens(elif.condition)
+            if (isTruthy(condVal)) {
+                executeBlock(elif.body, Environment(enclosing = env))
+                return
+            }
+        }
+
+        stmt.elseBranch?.let { executeBlock(it, Environment(enclosing = env)) }
+    }
+
+    private fun executeWhile(stmt: ParseNode.StmtNode.ExecuteWhileNode) {
+        while (isTruthy(evalConditionTokens(stmt.condition))) {
+            executeBlock(stmt.body, Environment(enclosing = env))
+        }
+    }
+
+    private fun executeFor(stmt: ParseNode.StmtNode.ExecuteForNode) {
+        val limitRaw = evaluate(stmt.rangeExpr)
+        val limit = try { asInt(stmt.rangeKeyword, limitRaw) } catch (e: RuntimeError) {
+            throw RuntimeError(stmt.rangeKeyword, "Range limit must be numeric.")
+        }
+        if (limit <= 0) return
+        for (i in 0 until limit) {
+            val loopEnv = Environment(enclosing = env)
+            loopEnv.define(stmt.selector.lexeme, i)
+            executeBlock(stmt.body, loopEnv)
+        }
+    }
+
+    private fun evalCall(expr: ParseNode.ExprNode.CallNode): Any? {
+        val callee = evaluate(expr.callee)
+        val arguments = expr.arguments.map { evaluate(it) }
+        if (callee !is Callable) {
+            throw RuntimeError(expr.paren, "Can only call functions.")
+        }
+        if (arguments.size != callee.arity()) {
+            throw RuntimeError(expr.paren, "Expected ${callee.arity()} arguments but got ${arguments.size}.")
+        }
+        return callee.call(this, arguments)
+    }
+
+    private fun evalUnary(e: ParseNode.ExprNode.UnaryNode): Any? {
+        val r = evaluate(e.operand)
         return when (e.operator.type) {
             TokenType.MINUS -> -asNumber(e.operator, r)
             TokenType.PLUS  -> +asNumber(e.operator, r)
@@ -67,7 +122,17 @@ class Interpreter(
         }
     }
 
-    private fun evalBinary(b: Expr.Binary): Any? {
+    private fun evalBinary(b: ParseNode.ExprNode.BinaryNode): Any? {
+        // short-circuit logical operators
+        if (b.operator.type == TokenType.AND) {
+            val left = evaluate(b.left)
+            return if (isTruthy(left)) evaluate(b.right) else left
+        }
+        if (b.operator.type == TokenType.OR) {
+            val left = evaluate(b.left)
+            return if (isTruthy(left)) left else evaluate(b.right)
+        }
+
         val l = evaluate(b.left)
         val r = evaluate(b.right)
         return when (b.operator.type) {
@@ -75,8 +140,8 @@ class Interpreter(
             TokenType.PLUS  -> plus(l, r, b.operator)
             TokenType.MINUS -> numeric(l, r, b.operator) { a, c -> a - c }
             TokenType.STAR  -> numeric(l, r, b.operator) { a, c -> a * c }
-            TokenType.DOLLAR -> divide(l, r, b.operator, floorDiv=false)
-            TokenType.DOLLAR_DOLLAR -> divide(l, r, b.operator, floorDiv=true)
+            TokenType.DOLLAR -> divide(l, r, b.operator, floorDiv = false)
+            TokenType.DOLLAR_DOLLAR -> divide(l, r, b.operator, floorDiv = true)
             TokenType.PERCENT -> numeric(l, r, b.operator) { a, c -> a % c }
             TokenType.STAR_STAR -> numeric(l, r, b.operator) { a, c -> a.pow(c) }
 
@@ -89,10 +154,6 @@ class Interpreter(
             TokenType.PIPE      -> (asInt(b.operator, l) or  asInt(b.operator, r))
             TokenType.CARET     -> (asInt(b.operator, l) xor asInt(b.operator, r))
 
-            // logical already parsed as binary "and/or"
-            TokenType.AND -> if (isTruthy(l)) r else l
-            TokenType.OR  -> if (isTruthy(l)) l else r
-
             // equality
             TokenType.EQUAL_EQUAL -> looseEq(l, r)
             TokenType.EXCL_EQUAL  -> !truthyBool(looseEq(l, r))
@@ -103,18 +164,22 @@ class Interpreter(
             TokenType.LESS_EQUAL   -> compare(b.operator, l, r) { a, c -> a <= c }
             TokenType.GREATER      -> compare(b.operator, l, r) { a, c -> a >  c }
             TokenType.GREATER_EQUAL-> compare(b.operator, l, r) { a, c -> a >= c }
-            TokenType.IN     -> membership(l, r, b.operator, not=false)
-            TokenType.NOT_IN -> membership(l, r, b.operator, not=true)
-            TokenType.IS     -> identity(l, r, b.operator, not=false)
-            TokenType.IS_NOT -> identity(l, r, b.operator, not=true)
+            TokenType.IN     -> membership(l, r, b.operator, not = false)
+            TokenType.NOT_IN -> membership(l, r, b.operator, not = true)
+            TokenType.IS     -> identity(l, r, b.operator, not = false)
+            TokenType.IS_NOT -> identity(l, r, b.operator, not = true)
 
             else -> throw RuntimeError(b.operator, "Unsupported operator '${b.operator.lexeme}'.")
         }
     }
 
-    private fun evalPostfix(p: Expr.Postfix): Any? {
-        val original = try { env.get(p.name) } catch (e: RuntimeError) {
-            throw RuntimeError(p.operator, "Undefined variable ${p.name}.")
+    private fun evalPostfix(p: ParseNode.ExprNode.PostfixNode): Any? {
+        val name = when (val operand = p.operand) {
+            is ParseNode.ExprNode.LiteralNode -> operand.token.lexeme
+            else -> throw RuntimeError(p.operator, "Postfix operand must be an identifier.")
+        }
+        val original = try { env.get(name) } catch (e: RuntimeError) {
+            throw RuntimeError(p.operator, "Undefined variable $name.")
         }
         val n = toNumOrNull(original)
             ?: throw RuntimeError(p.operator, "Postfix operator requires numeric value.")
@@ -127,37 +192,57 @@ class Interpreter(
             is Int -> updated.toInt()
             else -> updated
         }
-        env.assign(p.name, toStore)
+        env.assign(name, toStore)
         return original
     }
 
+    private fun declareFunction(stmt: ParseNode.StmtNode.FunctionDeclNode) {
+        val fn = Function(
+            name = stmt.name.lexeme,
+            params = stmt.params,
+            body = stmt.body,
+            closure = env
+        )
+        env.define(stmt.name.lexeme, fn)
+    }
 
-    private fun resolveLiteral(v: Any?): Any? {
-        if (v is String && v.startsWith("@") && v.length > 1) {
-            return env.get(v) 
+    // ==== Helpers ==========================================================
+    private fun resolveLiteral(token: Token): Any? = when (token.type) {
+        TokenType.NUMBER -> token.literal
+        TokenType.TRUE -> true
+        TokenType.FALSE -> false
+        TokenType.NIL -> null
+        TokenType.IDENTIFIER -> env.get(token.lexeme)
+        TokenType.STRING -> {
+            val lex = token.literal ?: token.lexeme
+            if (lex is String && (lex.startsWith("@") || lex.startsWith("#"))) {
+                env.get(lex)
+            } else if (lex is String) {
+                try { env.get(lex) } catch (e: RuntimeError) { lex }
+            } else lex
         }
-        return v
+        else -> token.literal ?: token.lexeme
     }
 
     fun stringify(value: Any?): String = when (value) {
-        null -> "{NIL}"
-        is Boolean -> value.toString()
         null -> "null"
+        is Boolean -> value.toString()
+        is Double -> {
             val i = value.toInt()
             if (i.toDouble() == value) i.toString() else value.toString()
         }
+        is Int -> value.toString()
+        is Callable -> value.toString()
         else -> value.toString()
     }
 
-    private fun isTruthy(x: Any?): Boolean {
-        return when (x) {
-            null -> false
-            is Boolean -> x
-            is Double -> x != 0.0
-            is Int -> x != 0
-            is String -> x.isNotEmpty() // simple rule: strings are truthy iff non-empty
-            else -> true
-        }
+    private fun isTruthy(x: Any?): Boolean = when (x) {
+        null -> false
+        is Boolean -> x
+        is Double -> x != 0.0
+        is Int -> x != 0
+        is String -> x.isNotEmpty()
+        else -> true
     }
     private fun truthyBool(x: Any?) = (x as? Boolean) ?: isTruthy(x)
 
@@ -208,16 +293,14 @@ class Interpreter(
         return stringify(l) == stringify(r)
     }
 
-    private fun strictEq(l: Any?, r: Any?): Boolean {
-        // Same "type class" and same value
-        return when {
-            l == null && r == null -> true
-            l is Boolean && r is Boolean -> l == r
-            (l is Double || l is Int) && (r is Double || r is Int) -> asNumber(Token(TokenType.NUMBER,"",null,1), l) ==
-                                                                     asNumber(Token(TokenType.NUMBER,"",null,1), r)
-            l is String && r is String -> l == r
-            else -> false
-        }
+    private fun strictEq(l: Any?, r: Any?): Boolean = when {
+        l == null && r == null -> true
+        l is Boolean && r is Boolean -> l == r
+        (l is Double || l is Int) && (r is Double || r is Int) ->
+            asNumber(Token(TokenType.NUMBER, "", null, 1), l) ==
+            asNumber(Token(TokenType.NUMBER, "", null, 1), r)
+        l is String && r is String -> l == r
+        else -> false
     }
 
     private fun toBoolOrNull(x: Any?): Boolean? = when (x) {
@@ -228,6 +311,7 @@ class Interpreter(
             else -> null
         }
         is Double -> if (x == 0.0 || x == 1.0) x == 1.0 else null
+        is Int -> if (x == 0 || x == 1) x == 1 else null
         else -> null
     }
 
@@ -240,13 +324,11 @@ class Interpreter(
     }
 
     private fun membership(l: Any?, r: Any?, tok: Token, not: Boolean): Boolean {
-        // Strings only for now (e.g., "ell" in "hello")
         val ok = (l is String && r is String && r.contains(l))
         return if (not) !ok else ok
     }
 
     private fun identity(l: Any?, r: Any?, tok: Token, not: Boolean): Boolean {
-        // "is" against type names (right operand a String type label): int|float|double|bool|char|String
         val type = (r as? String)?.lowercase()
         val isType = when (type) {
             "int" -> l is Int || (l is Double && l % 1.0 == 0.0)
@@ -268,14 +350,38 @@ class Interpreter(
         else -> null
     }
 
-    // ===== String interpolation for /say =====
-    // supports: literal text + {@var} or {#...} (we only resolve @var here)
+    private fun defineNativeFunctions() {
+        env.define("clock", object : Callable {
+            override fun arity() = 0
+            override fun call(interpreter: Interpreter, arguments: List<Any?>): Any? =
+                System.currentTimeMillis() / 1000.0
+            override fun toString(): String = "<native fn clock>"
+        })
+        env.define("print", object : Callable {
+            override fun arity() = 1
+            override fun call(interpreter: Interpreter, arguments: List<Any?>): Any? {
+                println(interpreter.stringify(arguments[0]))
+                return null
+            }
+            override fun toString(): String = "<native fn print>"
+        })
+        env.define("toString", object : Callable {
+            override fun arity() = 1
+            override fun call(interpreter: Interpreter, arguments: List<Any?>): Any? =
+                interpreter.stringify(arguments[0])
+            override fun toString(): String = "<native fn toString>"
+        })
+    }
 
+    // ==== String interpolation for /say ====================================
+    private fun interpolate(raw: String): String {
+        val sb = StringBuilder()
+        var i = 0
         while (i < raw.length) {
             if (raw[i] == '{') {
-                val end = raw.indexOf('}', i+1)
+                val end = raw.indexOf('}', i + 1)
                 if (end > i) {
-                    val inside = raw.substring(i+1, end).trim()
+                    val inside = raw.substring(i + 1, end).trim()
                     val value = if (inside.startsWith("@")) {
                         stringify(runCatching { env.get(inside) }.getOrNull())
                     } else {
@@ -292,11 +398,11 @@ class Interpreter(
         return sb.toString()
     }
 
-    // ===== Re-parse /execute condition (current parser stores raw string) =====
-    private fun evalConditionString(cond: String): Any? {
-        val scanner = Scanner(cond)
-        val tokens = scanner.scanTokens()
-        val parser = Parser(tokens)
+    // ==== Re-parse /execute condition ======================================
+    private fun evalConditionTokens(tokens: List<Token>): Any? {
+        val eofLine = tokens.lastOrNull()?.line ?: 1
+        val tokensWithEof = tokens + Token(TokenType.EOF, "", null, eofLine)
+        val parser = Parser(tokensWithEof)
         val expr = parser.parseExpression()
         return evaluate(expr)
     }

@@ -1,0 +1,45 @@
+/say --- if/elif/else ---
+/summon int @temp 35
+/execute if @temp > 30 run {
+  /say It's hot!
+}
+/execute elif @temp > 20 run {
+  /say It's warm.
+}
+/execute else run {
+  /say It's comfy.
+}
+
+/say --- dangling else check (nearest if) ---
+/summon int @first 1
+/summon int @second 0
+/execute if @first run {
+  /execute if @second run {
+    /say both
+  } else {
+    /say inner else triggers
+  }
+}
+
+/say --- while loop ---
+/summon int @i 0
+/execute while @i < 3 run {
+  /say i = {@i}
+  /set @i += 1
+}
+
+/say --- for loop (range) ---
+/execute for @j in range(3) run {
+  /say j = {@j}
+}
+
+/say --- logical operators (short-circuit) ---
+/summon int @den 0
+/execute if @den != 0 and 10 / @den > 1 run {
+  /say should not print
+} else {
+  /say short-circuited AND avoided division by zero
+}
+/execute if false or @den == 0 run {
+  /say OR evaluated right side only because left was false
+}

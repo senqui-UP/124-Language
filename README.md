@@ -35,6 +35,40 @@ break &emsp;&emsp; &ensp; ```/stop```
 continue &emsp;&nbsp; ```/skip```  
 kill program ```/kill``` 
 
+## Grammar (core)
+```
+program        → statement* EOF ;
+statement      → /say STRING
+               | /summon (TYPE|IDENTIFIER) IDENTIFIER (NUMBER)?
+               | /expr IDENTIFIER "{" expression "}"
+               | /set IDENTIFIER assignmentOp ( "{" expression "}" | expression )
+               | /function IDENTIFIER "(" parameters? ")" block
+               | /return expression?
+               | executeIf | executeWhile | executeFor
+               | /kill ;
+
+assignmentOp   → = | += | -= | *= | $= | $$= | %= | **= ;
+executeIf      → "/execute if" conditionTokens "run" block
+                 ( "/execute elif" conditionTokens "run" block )*
+                 ( "/execute else run" block )? ;
+executeWhile   → "/execute while" conditionTokens "run" block ;
+executeFor     → "/execute for" IDENTIFIER "in" range "(" expression ")" "run" block ;
+block          → "{" statement* "}" ;
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
+expression     → assignment ;
+assignment     → IDENTIFIER "=" assignment | logicOr ;
+logicOr        → logicAnd ( "or" logicAnd )* ;
+logicAnd       → equality ( "and" equality )* ;
+(arithmetic / comparison / bitwise continue as in Operators) ;
+primary        → NUMBER | STRING | TRUE | FALSE | NIL | IDENTIFIER | "(" expression ")" ;
+call           → primary ( "(" arguments? ")" )* ;
+arguments      → expression ( "," expression )* ;
+```
+Notes:
+- `and` / `or` short-circuit.
+- `/execute` supports `elif` and `else` with `run { ... }`.
+- Function calls are postfix; `/return` may omit a value.
+
 ## Other Keywords
 int, float, double, bool, char, String  
 true, false, null, const  
@@ -136,29 +170,21 @@ print {“X is equal to: “, x}
 	/say Fibonacci Sequence: {#fibonacci(@n)}  
 }
 ```
-<<<<<<< HEAD
-*if (varname==10)  
-&emsp;int var2 = 20  
-&emsp;varname = var2  
-&emsp;print(“varname is now ”, varname)  
-else  
-&emsp;varname = 0  
-&emsp;print(“varname is now “, varname)*  
 
+## Native Functions
+- clock() -> current time in seconds  
+- print(value) -> prints a value  
+- toString(value) -> stringifies a value  
 
-## Design Rationale
-The rationale for our design choices was to make it similar to how Minecraft commands work. They already have their own syntaxes, but we expanded it to be more for coding and programming instead of just their functions in Minecraft. New commands/keywords are created so that it’s still easy to understand and not just simply obfuscating and changing keywords for the sake of changing them.
+## Included Tests / Examples
+- test2.txt exercises /execute if/elif/else, while, for-range loops, logical and/or, and numeric updates.
+- test.txt contains earlier sample commands.
 
 ## How to Run
-kotlinc *.kt -include-runtime -d PyCraft.jar
-java -jar PyCraft.jar path\to\program.pc
-
+kotlinc (Get-ChildItem -Filter *.kt).FullName -include-runtime -d PyCraft.jar
 Interactive Evaluator
 java -jar PyCraft.jar
 
 Run Files
 java -jar PyCraft.jar test.txt
- 
-
-=======
->>>>>>> 132f4d2a36a174daacfd706c4be1e26ab3a865e6
+  

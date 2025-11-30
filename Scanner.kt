@@ -154,6 +154,7 @@
                 }
 
                 '@' -> identifier()
+                '#' -> funcIdentifier()
 
                 // FIX: bare numbers like 42, 3.14
                 in '0'..'9' -> {
@@ -362,6 +363,17 @@
             if (length > 50) error("Identifier exceeds 50 characters")
             val text = source.substring(start, current)
             addToken(TokenType.IDENTIFIER, null)
+        }
+
+        private fun funcIdentifier() {
+            if (!peek().isLetter()) {
+                error("Function name must start with # followed by a letter")
+                return
+            }
+            advance()
+            while (!isAtEnd() && (peek().isLetterOrDigit() || peek() == '_')) advance()
+            val text = source.substring(start, current)
+            addToken(TokenType.IDENTIFIER, text)
         }
 
         private fun quotedString() {
