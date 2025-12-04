@@ -78,8 +78,7 @@ run, in, range, as, from, in not in, is, is not, and, or, not
 ## Syntax Style
 - all keywords start with "/" to mimic a command prompt; except import, which is inspired by one of the meta data files of Minecraft
 - uses {} for code blocks, taken from Minecraft
-- indentation as statement separators due to no use of semicolons
-- Comments are single line only, nod to linearity of command blocks
+- Comments are single line only, nod to single-line linearity of command blocks
 - Division uses $$ to provide less confusion with slash commands
 
 ## Operators
@@ -103,13 +102,14 @@ _ex: @x, @wooden_sword, @variable, @function_name_
 - Highly advised to use snake_case for naming variables as a nod to the game
 - Name limit of 50 characters, similar to the game
 - @a and @s are optional, will parse code as if it is local to the block it is in
-- However, function and import names are called using #<id_name>			
+- However, function and import names are called using #<id_name>
 
 ## Literals
 **Strings**  
 - all literals are automatically assumed to be strings
 - String Interpolation: variables and functions must be inside {} when in a string
   - _example: ```/say {@var}``` or ```/say {@function}```_
+  - This allows ```/say @var``` (outputs "@var" the string) and ```/say {@var}``` (outputs var's variable value)
 
 **Numbers**    
 - when declared as an int/float/double in a variable declaration statement
