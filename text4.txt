@@ -1,0 +1,22 @@
+/function #make_counter() {
+  /summon int @count 0
+
+  /function #increment() {
+    /set @count += 1 
+    /return @count
+  }
+  /return #increment
+}
+
+/summon var @counter
+/set @counter = #make_counter()
+/say Counter demo:
+/say {@counter()}
+/say {@counter()}
+/say {@counter()}
+
+/summon string @letters abc
+/say For loop over a string:
+/execute for @letter in @letters run {
+  /say {@letter}
+}

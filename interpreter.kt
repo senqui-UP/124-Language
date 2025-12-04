@@ -87,14 +87,11 @@ class Interpreter(
     }
 
     private fun executeFor(stmt: ParseNode.StmtNode.ExecuteForNode) {
-        val limitRaw = evaluate(stmt.rangeExpr)
-        val limit = try { asInt(stmt.rangeKeyword, limitRaw) } catch (e: RuntimeError) {
-            throw RuntimeError(stmt.rangeKeyword, "Range limit must be numeric.")
-        }
-        if (limit <= 0) return
-        for (i in 0 until limit) {
+        val target = evaluate(stmt.rangeExpr)
+        val iterable = iterableForLoop(target, stmt.rangeKeyword, stmt.inKeyword)
+        for (item in iterable) {
             val loopEnv = Environment(enclosing = env)
-            loopEnv.define(stmt.selector.lexeme, i)
+            loopEnv.define(stmt.selector.lexeme, item)
             executeBlock(stmt.body, loopEnv)
         }
     }
@@ -206,7 +203,6 @@ class Interpreter(
         env.define(stmt.name.lexeme, fn)
     }
 
-    // ==== Helpers ==========================================================
     private fun resolveLiteral(token: Token): Any? = when (token.type) {
         TokenType.NUMBER -> token.literal
         TokenType.TRUE -> true
@@ -328,6 +324,30 @@ class Interpreter(
         return if (not) !ok else ok
     }
 
+    private fun iterableForLoop(value: Any?, rangeKeyword: Token?, fallbackTok: Token): Iterable<Any?> {
+        if (rangeKeyword != null) {
+            val limit = try { asInt(rangeKeyword, value) } catch (e: RuntimeError) {
+                throw RuntimeError(rangeKeyword, "Range limit must be numeric.")
+            }
+            val capped = if (limit < 0) 0 else limit
+            return 0 until capped
+        }
+
+        return when (value) {
+            null -> emptyList()
+            is Iterable<*> -> value
+            is Array<*> -> value.asList()
+            is Map<*, *> -> value.entries
+            is String -> value.toList()
+            is Int -> 0 until (if (value < 0) 0 else value)
+            is Double -> {
+                val n = asInt(fallbackTok, value)
+                0 until (if (n < 0) 0 else n)
+            }
+            else -> throw RuntimeError(fallbackTok, "For-loop target must be a number, string, map, array, or iterable.")
+        }
+    }
+
     private fun identity(l: Any?, r: Any?, tok: Token, not: Boolean): Boolean {
         val type = (r as? String)?.lowercase()
         val isType = when (type) {
@@ -373,7 +393,6 @@ class Interpreter(
         })
     }
 
-    // ==== String interpolation for /say ====================================
     private fun interpolate(raw: String): String {
         val sb = StringBuilder()
         var i = 0
@@ -382,12 +401,10 @@ class Interpreter(
                 val end = raw.indexOf('}', i + 1)
                 if (end > i) {
                     val inside = raw.substring(i + 1, end).trim()
-                    val value = if (inside.startsWith("@")) {
-                        stringify(runCatching { env.get(inside) }.getOrNull())
-                    } else {
-                        inside
+                    val value = runCatching { evalInlineExpression(inside) }.getOrElse {
+                        runCatching { env.get(inside) }.getOrNull()
                     }
-                    sb.append(value)
+                    sb.append(stringify(value ?: inside))
                     i = end + 1
                     continue
                 }
@@ -396,6 +413,13 @@ class Interpreter(
             i++
         }
         return sb.toString()
+    }
+
+    private fun evalInlineExpression(src: String): Any? {
+        val tokens = Scanner(src).scanTokens()
+        val parser = Parser(tokens)
+        val expr = parser.parseExpression()
+        return evaluate(expr)
     }
 
     // ==== Re-parse /execute condition ======================================

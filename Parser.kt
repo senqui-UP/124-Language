@@ -62,7 +62,7 @@ class Parser(private val tokens: List<Token>) {
             val numTok = consume(TokenType.NUMBER, "Expected numeric literal")
             consume(TokenType.RIGHT_PAREN, "Expected ')' after number")
             valueTok = numTok
-        } else if (match(TokenType.NUMBER)) {
+        } else if (match(TokenType.NUMBER) || match(TokenType.STRING)) {
             valueTok = previous()
         }
 
@@ -162,15 +162,15 @@ class Parser(private val tokens: List<Token>) {
     private fun executeFor(keyword: Token): ParseNode.StmtNode {
         val selector = consume(TokenType.IDENTIFIER, "Expected loop variable after /execute for")
         val inKeyword = consume(TokenType.IN, "Expected 'in' after loop variable")
-        val rangeKeyword = consume(TokenType.KEYWORD, "Expected 'range' after 'in'")
-        if (!rangeKeyword.lexeme.contains("range")) throw error(rangeKeyword, "Expected 'range' after 'in'")
-        val rangeExpr = if (match(TokenType.LEFT_PAREN)) {
-            val expr = expression()
-            consume(TokenType.RIGHT_PAREN, "Expected ')' after range expression")
-            expr
-        } else {
-            expression()
-        }
+        val rangeKeyword = if (check(TokenType.KEYWORD) && peek().lexeme.contains("range")) advance() else null
+        val rangeExpr =
+            if (rangeKeyword != null && match(TokenType.LEFT_PAREN)) {
+                val expr = expression()
+                consume(TokenType.RIGHT_PAREN, "Expected ')' after range expression")
+                expr
+            } else {
+                expression()
+            }
         val runKeyword = consume(TokenType.KEYWORD, "Expected 'run' keyword")
         if (!runKeyword.lexeme.contains("run")) throw error(runKeyword, "Expected 'run' keyword")
         val body = parseBlock()

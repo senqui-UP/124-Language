@@ -39,7 +39,7 @@ sealed class ParseNode {
             val keyword: Token,
             val selector: Token,
             val inKeyword: Token,
-            val rangeKeyword: Token,
+            val rangeKeyword: Token?, // null when iterating directly over a collection
             val rangeExpr: ExprNode,
             val runKeyword: Token,
             val body: List<StmtNode>
