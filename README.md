@@ -8,28 +8,26 @@ The PyCraft Programming language is a Python-inspired language designed to mimic
 
 
 ## Syntaxes
-import declare &emsp;&nbsp; ```.mcmeta <import>```  
- &emsp; &emsp; &emsp;&emsp;&emsp; &emsp; &emsp; ```.mcmeta <specific_function> from <import>```  
- &emsp; &emsp; &emsp;&emsp;&emsp; &emsp; &emsp; ```.mcmeta <import> as <#alias>```     
 function declare &emsp; ```/function <function_name>(<parameters>) { #code here } ```     
 variable declare &emsp; ```/summon <type> <@var>```    
  &emsp; &emsp; &emsp;&emsp;&emsp; &emsp; &emsp; ```/summon <type> <@var> <value>```    
  &emsp; &emsp; &emsp;&emsp;&emsp; &emsp; &emsp; ```/summon const <type> <@var> <value>```    
 assignment stmt	&emsp; ```/set <expr>```    
-	if &emsp;&emsp;&ensp; ```/execute if <expr> run { #code here }```    
-	if else	&ensp; ```/execute if <expr> run { #code here } ```    
- &emsp; &emsp; &emsp; ```/execute else run { #code here }```  
-	elif &emsp;&emsp; ```/execute if <expr> run { #code here }```  
- &emsp; &emsp; &emsp; ```/execute elif <expr> run { #code here }```  
- &emsp; &emsp; &emsp; ```/execute else run { #code here }```  
-for	&emsp;&emsp;&emsp; ```/execute for <@var> in range (<expr>) run { #code here }```  
-while &emsp;&emsp; ```/execute while <expr> run { #code here }```  
+	if &emsp;&emsp;&ensp; ```/execute if <expr> run { /code/ }```    
+	if else	&ensp; ```/execute if <expr> run { /code/ } ```    
+ &emsp; &emsp; &emsp; ```/execute else run { /code/ }```  
+	elif &emsp;&emsp; ```/execute if <expr> run { /code/ }```  
+ &emsp; &emsp; &emsp; ```/execute elif <expr> run { /code/ }```  
+ &emsp; &emsp; &emsp; ```/execute else run { /code/ }```  
+for	&emsp;&emsp;&emsp; ```/execute for <@var> in range (<expr>) run { /code/ }```  
+while &emsp;&emsp; ```/execute while <expr> run { /code/ }```  
 input stmt &nbsp;```/source <@input>```  
  &emsp;&emsp;&emsp;&emsp;&emsp; ```/source <type> <@input>```   
  &emsp;&emsp;&emsp;&emsp;&emsp; ```/source <@input> <optional string>```   
-output stmt&ensp;```/say #string of text here```   
- &emsp;&emsp;&emsp;&emsp;&emsp;&ensp; ```/say <string here> {<@var>}  #string here```    
-comment	&emsp; ```/whisper #string of text here```  
+output stmt&ensp;```/say string of text here```   
+ &emsp;&emsp;&emsp;&emsp;&emsp;&ensp; ```/say <string> {<@var>} <string>```    
+ &emsp;&emsp;&emsp;&emsp;&emsp;&ensp; ```/say <string> {<#func>} <string>```   
+comment	&emsp; ```/whisper string of text here```  
 return &emsp;&ensp;&emsp; ```/return <expr>```   
 break &emsp;&emsp; &ensp; ```/stop```   
 continue &emsp;&nbsp; ```/skip```  
@@ -40,7 +38,6 @@ kill program ```/kill```
 program        → statement* EOF ;
 statement      → /say STRING
                | /summon (TYPE|IDENTIFIER) IDENTIFIER (NUMBER)?
-               | /expr IDENTIFIER "{" expression "}"
                | /set IDENTIFIER assignmentOp ( "{" expression "}" | expression )
                | /function IDENTIFIER "(" parameters? ")" block
                | /return expression?
@@ -73,7 +70,6 @@ Notes:
 int, float, double, bool, char, String  
 true, false, null, const  
 run, in, range, as, from, in not in, is, is not, and, or, not  
-@a, @s  
 
 ## Syntax Style
 - all keywords start with "/" to mimic a command prompt; except import, which is inspired by one of the meta data files of Minecraft
@@ -95,13 +91,9 @@ _same as Python, but divide is \$_
 ## Identifiers
 **Syntax**: ```@<id name>```   
 _ex: @x, @wooden_sword, @variable, @function_name_   
-**Special Variable Calls**     
-&emsp; ```@a[@variable]```	global variable   
-&emsp; ```@s[@variable]```	static variable  
 - Case Sensitive
 - Highly advised to use snake_case for naming variables as a nod to the game
 - Name limit of 50 characters, similar to the game
-- @a and @s are optional, will parse code as if it is local to the block it is in
 - However, function and import names are called using #<id_name>
 
 ## Literals
