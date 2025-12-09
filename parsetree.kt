@@ -63,6 +63,12 @@ sealed class ParseNode {
             val runKeyword: Token,
             val body: List<StmtNode>
         ) : StmtNode()
+        data class BreakNode(
+            val keyword: Token
+        ) : StmtNode()
+        data class ContinueNode(
+            val keyword: Token
+        ) : StmtNode()
         data class KillNode(
             val keyword: Token
         ) : StmtNode()

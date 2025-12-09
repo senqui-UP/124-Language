@@ -31,6 +31,8 @@ class Interpreter(
             is ParseNode.StmtNode.ExecuteIfNode -> executeIf(stmt)
             is ParseNode.StmtNode.ExecuteWhileNode -> executeWhile(stmt)
             is ParseNode.StmtNode.ExecuteForNode -> executeFor(stmt)
+            is ParseNode.StmtNode.BreakNode -> throw Break()
+            is ParseNode.StmtNode.ContinueNode -> throw Continue()
             is ParseNode.StmtNode.KillNode -> {} // handled by main loop
         }
     }
@@ -108,19 +110,31 @@ class Interpreter(
     }
 
     private fun executeWhile(stmt: ParseNode.StmtNode.ExecuteWhileNode) {
+    try {
         while (isTruthy(evalConditionTokens(stmt.condition))) {
-            executeBlock(stmt.body, Environment(enclosing = env))
+            try {
+                executeBlock(stmt.body, Environment(enclosing = env))
+            } catch (e: Continue) {
+                continue // Skip to next iteration
+            }
         }
+    } catch (e: Break) { } // exits loop
     }
 
     private fun executeFor(stmt: ParseNode.StmtNode.ExecuteForNode) {
         val target = evaluate(stmt.rangeExpr)
         val iterable = iterableForLoop(target, stmt.rangeKeyword, stmt.inKeyword)
-        for (item in iterable) {
-            val loopEnv = Environment(enclosing = env)
-            loopEnv.define(stmt.selector.lexeme, item)
-            executeBlock(stmt.body, loopEnv)
-        }
+        try {
+            for (item in iterable) {
+                val loopEnv = Environment(enclosing = env)
+                loopEnv.define(stmt.selector.lexeme, item)
+                try {
+                    executeBlock(stmt.body, loopEnv)
+                } catch (e: Continue) {
+                    continue // Skip to next iteration
+                }
+            }
+        } catch (e: Break) { }
     }
 
     private fun evalCall(expr: ParseNode.ExprNode.CallNode): Any? {

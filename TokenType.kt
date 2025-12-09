@@ -26,6 +26,6 @@ enum class TokenType {
 
     // Keywords
     KEYWORD,
-
+    BREAK, CONTINUE,
     EOF
 }

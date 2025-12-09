@@ -19,6 +19,12 @@ class Parser(private val tokens: List<Token>) {
 
     private fun statement(): ParseNode.StmtNode {
         if (match(TokenType.KEYWORD)) {
+            if (match(TokenType.BREAK)) {
+                return ParseNode.StmtNode.BreakNode(previous())
+            }
+            if (match(TokenType.CONTINUE)) {
+                return ParseNode.StmtNode.ContinueNode(previous())
+            }
             val kw = previous()
             val text = kw.lexeme
             return when {
@@ -90,7 +96,11 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun functionDeclaration(keyword: Token): ParseNode.StmtNode {
-        val name = consumeOneOf("Expected function name", TokenType.STRING, TokenType.IDENTIFIER)
+        val name = consume(TokenType.IDENTIFIER, "Expected function name starting with #")
+        // Validate that it always starts with #
+        if (!name.lexeme.startsWith("#")) {
+            throw error(name, "Function name must start with #")
+        }
         consume(TokenType.LEFT_PAREN, "Expected '(' after function name")
         val params = mutableListOf<Token>()
         if (!check(TokenType.RIGHT_PAREN)) {

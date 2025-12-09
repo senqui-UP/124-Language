@@ -148,6 +148,12 @@
                         while (!isAtEnd() && peek() != '\n') advance()
                         val msg = source.substring(msgStart, current)
                         tokens.add(Token(TokenType.STRING, msg, msg, line))
+                    } else if (peekAhead("stop")) {
+                        repeat("stop".length) { advance() }
+                        addToken(TokenType.BREAK)
+                    } else if (peekAhead("skip")) {
+                        repeat("skip".length) { advance() }
+                        addToken(TokenType.CONTINUE)
                     } else {
                         stringOrKeyword()
                     }
