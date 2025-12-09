@@ -1,10 +1,10 @@
 /whisper A simple program demonstrating variables and scope
 
 /summon String @greeting
-/expr @greeting {"Hello"}
+/set @greeting = Hello
 
 /summon String @name
-/expr @name {"World"}
+/set @name = World
 
 /say {@greeting}, {@name}!
 

@@ -7,7 +7,7 @@
         // Keywords List
     private val keywords = setOf(
         ".mcmeta",
-        "/function", "/kill", "/say", "/source", "/summon", "/set", "/expr",
+        "/function", "/kill", "/say", "/source", "/summon", "/set", //"/expr",
         "/execute", "/return", "/stop", "/skip", "/whisper",
         "run", "else", "elif", "as", "from", "in", "range", "const"
     )
@@ -131,7 +131,7 @@
                 ' ', '\r', '\t' -> {} // ignore whitespace
                 '\n' -> line++
 
-                '"' -> quotedString()
+                '\u0022' -> quotedString()
 
                 '/' -> {
                     // Special-case commands that should consume the rest of the line as a message
@@ -301,6 +301,11 @@
         }
 
         private fun looksLikeParenNumber(): Boolean {
+            // Don't treat as number literal if previous token was an identifier (function name)
+            if (tokens.isNotEmpty() && tokens.last().type == TokenType.IDENTIFIER) {
+                return false
+            }
+
             var i = current // position right after '('
             if (i >= source.length || !source[i].isDigit()) return false
 
@@ -361,7 +366,6 @@
                 length++
             }
             if (length > 50) error("Identifier exceeds 50 characters")
-            val text = source.substring(start, current)
             addToken(TokenType.IDENTIFIER, null)
         }
 

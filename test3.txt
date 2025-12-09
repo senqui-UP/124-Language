@@ -10,15 +10,15 @@
 /say First 15 Fibonacci numbers
 /summon int @val 0
 /execute for @i in range(15) run {
-  /expr @val { #fibonacci(@i) }
+  /set @val = {#fibonacci(@i)}
   /say fib({@i}) = {@val}
 }
 
 /say --- natives: clock and toString ---
 /summon double @now 0
 /summon string @numStr 0
-/expr @now { clock() }
+/set @now = clock()
 /say clock seconds = {@now}
-/expr @numStr { toString( 12345 ) }
+/set @numStr = toString (12345)
 /say toString on 12345 -> {@numStr}
 

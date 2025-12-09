@@ -24,8 +24,9 @@ class Parser(private val tokens: List<Token>) {
             return when {
                 text.startsWith("/function") -> functionDeclaration(kw)
                 text.startsWith("/say") -> sayStatement(kw)
+                text.startsWith("/source") -> sourceStatement(kw)
                 text.startsWith("/summon") -> summonStatement(kw)
-                text.startsWith("/expr") -> exprAssignStatement(kw)
+                // text.startsWith("/expr") -> exprAssignStatement(kw)
                 text.startsWith("/set") -> setStatement(kw)
                 text.startsWith("/execute") -> executeStatement(kw)
                 text.startsWith("/return") -> returnStatement(kw)
@@ -51,6 +52,25 @@ class Parser(private val tokens: List<Token>) {
         }
         while (!isAtEnd() && peek().line == sayLine) advance()
         return ParseNode.StmtNode.SayNode(keyword, messageToken)
+    }
+
+    private fun sourceStatement(keyword: Token): ParseNode.StmtNode {
+        val typeTok = if (check(TokenType.STRING) || check(TokenType.IDENTIFIER)) {
+            val possibleType = peek()
+            if (possibleType.lexeme.lowercase() in listOf("int", "float", "double", "bool", "string")) {
+                advance()
+            } else null
+        } else null
+        
+        val name = consume(TokenType.IDENTIFIER, "Expected variable name")
+        
+        // Optional prompt message at the rest of the line
+        val promptTokens = mutableListOf<Token>()
+        while (!isAtEnd() && peek().type != TokenType.EOF) {
+            promptTokens.add(advance())
+        }
+        
+        return ParseNode.StmtNode.SourceNode(keyword, typeTok, name, promptTokens)
     }
 
     private fun summonStatement(keyword: Token): ParseNode.StmtNode {
@@ -88,13 +108,13 @@ class Parser(private val tokens: List<Token>) {
         return ParseNode.StmtNode.ReturnNode(keyword, value)
     }
 
-    private fun exprAssignStatement(keyword: Token): ParseNode.StmtNode {
-        val name = consume(TokenType.IDENTIFIER, "Expected variable name")
-        consume(TokenType.LEFT_BRACE, "Expected '{' before expression")
-        val expr = expression()
-        consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
-        return ParseNode.StmtNode.ExprAssignNode(keyword, name, expr)
-    }
+    // private fun exprAssignStatement(keyword: Token): ParseNode.StmtNode {
+    //     val name = consume(TokenType.IDENTIFIER, "Expected variable name")
+    //     consume(TokenType.LEFT_BRACE, "Expected '{' before expression")
+    //     val expr = expression()
+    //     consume(TokenType.RIGHT_BRACE, "Expected '}' after expression")
+    //     return ParseNode.StmtNode.ExprAssignNode(keyword, name, expr)
+    // }
 
     private fun setStatement(keyword: Token): ParseNode.StmtNode {
         val name = consume(TokenType.IDENTIFIER, "Expected variable name")

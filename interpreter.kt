@@ -22,8 +22,9 @@ class Interpreter(
     fun execute(stmt: ParseNode.StmtNode) {
         when (stmt) {
             is ParseNode.StmtNode.SayNode -> println(interpolate(stmt.message.literal as? String ?: stmt.message.lexeme))
+            is ParseNode.StmtNode.SourceNode -> executeSource(stmt)
             is ParseNode.StmtNode.SummonNode -> env.define(stmt.name.lexeme, stmt.value?.literal ?: defaultValueForType(stmt.type.lexeme))
-            is ParseNode.StmtNode.ExprAssignNode -> env.assign(stmt.name.lexeme, evaluate(stmt.expr))
+            // is ParseNode.StmtNode.ExprAssignNode -> env.assign(stmt.name.lexeme, evaluate(stmt.expr))
             is ParseNode.StmtNode.SetNode -> executeAssign(stmt)
             is ParseNode.StmtNode.FunctionDeclNode -> declareFunction(stmt)
             is ParseNode.StmtNode.ReturnNode -> throw Return(stmt.value?.let { evaluate(it) })
@@ -45,6 +46,32 @@ class Interpreter(
     }
 
     // ==== Statements =======================================================
+    private fun executeSource(stmt: ParseNode.StmtNode.SourceNode) {
+        // Build prompt message
+        val prompt = if (stmt.promptTokens.isNotEmpty()) {
+            stmt.promptTokens.joinToString(" ") { it.lexeme }
+        } else {
+            ">> Input: "
+        }
+        
+        print(prompt)
+        val input = readln()
+        
+        // Convert based on type
+        val value = if (stmt.type != null) {
+            when (stmt.type.lexeme.lowercase()) {
+                "int" -> input.toIntOrNull() ?: 0
+                "float", "double" -> input.toDoubleOrNull() ?: 0.0
+                "bool" -> input.lowercase() in listOf("true", "1", "yes")
+                else -> input
+            }
+        } else {
+            input // default to string
+        }
+        
+        env.define(stmt.name.lexeme, value)
+    }
+
     private fun executeAssign(stmt: ParseNode.StmtNode.SetNode) {
         val right = evaluate(stmt.expr)
         val current = env.get(stmt.name.lexeme)
