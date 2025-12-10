@@ -381,7 +381,12 @@
                 return
             }
             advance()
-            while (!isAtEnd() && (peek().isLetterOrDigit() || peek() == '_')) advance()
+            var length = 2  // ADD: # + first letter
+            while (!isAtEnd() && (peek().isLetterOrDigit() || peek() == '_') && length < 51) {  // ADD: && length < 51
+                advance()
+                length++  // ADD
+            }
+            if (length > 50) error("Function name exceeds 50 characters")  // ADD
             val text = source.substring(start, current)
             addToken(TokenType.IDENTIFIER, text)
         }

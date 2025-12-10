@@ -1,4 +1,4 @@
-/say --- functions and recursion ---
+/say --- Functions and Recursion ---
 
 /function #fibonacci(@n) {
   /execute if @n <= 1 run {
@@ -13,12 +13,3 @@
   /set @val = {#fibonacci(@i)}
   /say fib({@i}) = {@val}
 }
-
-/say --- natives: clock and toString ---
-/summon double @now 0
-/summon string @numStr 0
-/set @now = clock()
-/say clock seconds = {@now}
-/set @numStr = toString (12345)
-/say toString on 12345 -> {@numStr}
-

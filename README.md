@@ -8,7 +8,7 @@ PyCraft is an experimental Python-inspired programming language designed to mimi
 
 
 ## Syntaxes
-function declare &emsp; ```/function <function_name>(<parameters>) { #code here } ```     
+function declare &emsp; ```/function <#function_name>(<parameters>) { #code here } ```     
 variable declare &emsp; ```/summon <type> <@var>```    
  &emsp; &emsp; &emsp;&emsp;&emsp; &emsp; &emsp; ```/summon <type> <@var> <value>```    
  &emsp; &emsp; &emsp;&emsp;&emsp; &emsp; &emsp; ```/summon const <type> <@var> <value>```    
@@ -20,6 +20,7 @@ assignment stmt	&emsp; ```/set <expr>```
  &emsp; &emsp; &emsp; ```/execute elif <expr> run { /code/ }```  
  &emsp; &emsp; &emsp; ```/execute else run { /code/ }```  
 for	&emsp;&emsp;&emsp; ```/execute for <@var> in range (<expr>) run { /code/ }```  
+ &emsp; &emsp; &emsp;  ```/execute for <@var> in <iterable_value> run { /code/ }```
 while &emsp;&emsp; ```/execute while <expr> run { /code/ }```  
 input stmt &nbsp;```/source <@input>```  
  &emsp;&emsp;&emsp;&emsp;&emsp; ```/source <type> <@input>```   
@@ -42,7 +43,7 @@ statement      → /say STRING
                | /function IDENTIFIER "(" parameters? ")" block
                | /return expression?
                | executeIf | executeWhile | executeFor
-               | /kill ;
+               | /stop | /skip | /kill ;
 
 assignmentOp   → = | += | -= | *= | $= | $$= | %= | **= ;
 executeIf      → "/execute if" conditionTokens "run" block
@@ -67,9 +68,9 @@ Notes:
 - Function calls are postfix; `/return` may omit a value.
 
 ## Other Keywords
-int, float, double, bool, char, String  
-true, false, null, const  
-run, in, range, as, from, in not in, is, is not, and, or, not  
+- int, float, double, bool, char, String  
+- true, false, null, const  
+- run, in, range, as, from, in not in, is, is not, and, or, not  
 
 ## Syntax Style
 - all keywords start with "/" to mimic a command prompt; except import, which is inspired by one of the meta data files of Minecraft
@@ -90,17 +91,17 @@ _same as Python, but divide is \$_
 
 ## Identifiers
 **Syntax**: ```@<id name>```   
-_ex: @x, @wooden_sword, @variable, @function_name_   
+_ex: @x, @wooden_sword, @variable   
 - Case Sensitive
 - Highly advised to use snake_case for naming variables as a nod to the game
 - Name limit of 50 characters, similar to the game
-- However, function and import names are called using #<id_name>
+- However, function and import names are called using #<function_name>
 
 ## Literals
 **Strings**  
 - all literals are automatically assumed to be strings
 - String Interpolation: variables and functions must be inside {} when in a string
-  - _example: ```/say {@var}``` or ```/say {@function}```_
+  - _example: ```/say {@var}``` or ```/say {#function}```_
   - This allows ```/say @var``` (outputs "@var" the string) and ```/say {@var}``` (outputs var's variable value)
 
 **Numbers**    
@@ -124,11 +125,10 @@ _ex: @x, @wooden_sword, @variable, @function_name_
 - Loose (==) and Strict (===) Equality Comparisons
 - Conversion Precedence: Boolean → Numeric → String
 
-## Errors
-```Unknown command```
-Syntax error: ```unexpected ... at ....```
-In line errors:  ```<--[HERE] at its end.```
-
+## Errors  
+- Scanner errors: `Error at line X: message`  
+- Parse errors: `[line X] Error at 'token': message`    
+- Runtime errors: `[line X] Runtime error: message`  
 
 ## Sample Code
 **Variable Declaration, Arithmetic, Output **  
@@ -166,7 +166,7 @@ print {“X is equal to: “, x}
 ## Native Functions
 - clock() -> current time in seconds  
 - print(value) -> prints a value  
-- toString(value) -> stringifies a value  
+- toString (value) -> stringifies a value  
 
 ## Included Tests / Examples
 - test2.txt exercises /execute if/elif/else, while, for-range loops, logical and/or, and numeric updates.
